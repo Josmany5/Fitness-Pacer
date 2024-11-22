@@ -3,11 +3,12 @@
 <head>
     <title>Fitness Pacer</title>
     <style>
-        body { font-family: Arial, sans-serif; margin: 20px; }
+        body { font-family: Arial, sans-serif; margin: 20px; font-size: 24px; } /* Increased font size */
         .exercise { margin-bottom: 20px; }
-        .button { margin: 10px; }
-        #timer { font-size: 32px; margin-top: 20px; }
+        .button { margin: 10px; font-size: 24px; }
+        #timer { font-size: 36px; margin-top: 20px; }
         #calendar { margin-top: 20px; }
+        ul { font-size: 24px; }
     </style>
     <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.0.2/main.min.css" rel="stylesheet" />
 </head>
@@ -19,7 +20,12 @@
         <h2>Create Your Workout</h2>
         <div id="exercises"></div>
         <button onclick="addExercise()">Add Another Exercise</button>
+        <button onclick="saveWorkout()">Save Workout</button>
         <button onclick="startWorkout()">Start Workout</button>
+        <div id="saved-workouts">
+            <h3>Saved Workouts</h3>
+            <ul id="workout-list"></ul>
+        </div>
     </div>
 
     <!-- Workout Tracker -->
@@ -34,8 +40,7 @@
     <div id="workout-history">
         <h2>Workout History</h2>
         <ul id="history-list"></ul>
-        <button onclick="deleteHistory()">Delete History</button>
-        <div id="calendar"></div>
+        <button onclick="deleteSelectedHistory()">Delete Selected History</button>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.0.2/main.min.js"></script>
@@ -49,6 +54,7 @@
         // Global Variables
         let workout = [];
         let history = JSON.parse(localStorage.getItem("history")) || [];
+        let savedWorkouts = JSON.parse(localStorage.getItem("savedWorkouts")) || [];
         let currentExerciseIndex = 0;
 
         // Add Exercise Function
@@ -63,12 +69,9 @@
                 </select>
                 <input type="text" placeholder="Exercise Name" class="name" />
                 <input type="number" placeholder="Sets" class="sets" />
-                <input type="number" placeholder="Reps" class="reps" />
-                <input type="number" placeholder="Rest (seconds)" class="rest" />
-                <div class="weights"></div>
-                <button onclick="addSetWeight(this)">Add Weight for Set</button>
+                <div class="sets-reps"></div>
+                <button onclick="addSetDetails(this)">Add Set Details</button>
             `;
-
             exercisesDiv.appendChild(exerciseDiv);
 
             // Auto-fill custom field if a preset is selected
@@ -78,13 +81,23 @@
             });
         }
 
-        // Add Weight for Individual Sets
-        function addSetWeight(button) {
-            const weightsDiv = button.previousElementSibling;
-            const setCount = weightsDiv.childElementCount + 1;
-            weightsDiv.innerHTML += `
+        // Add Set Details
+        function addSetDetails(button) {
+            const setsRepsDiv = button.previousElementSibling;
+            const setCount = setsRepsDiv.childElementCount / 2 + 1;
+
+            const setInput = document.createElement("div");
+            setInput.innerHTML = `
+                <input type="number" placeholder="Reps for Set ${setCount}" class="reps" />
                 <input type="number" placeholder="Weight for Set ${setCount} (lbs)" class="weight" />
+                <button onclick="removeSet(this)">Remove Set</button>
             `;
+            setsRepsDiv.appendChild(setInput);
+        }
+
+        // Remove Set Details
+        function removeSet(button) {
+            button.parentElement.remove();
         }
 
         // Initialize First Exercise Bar
@@ -94,35 +107,66 @@
             addExercise();
         }
 
-        // Start Workout Function
-        function startWorkout() {
+        // Save Workout
+        function saveWorkout() {
+            const workoutName = prompt("Enter a name for this workout:");
+            if (!workoutName) return alert("Workout not saved. Please provide a name.");
+            
             const exercisesDiv = document.querySelectorAll(".exercise");
-            workout = []; // Reset workout
-
+            const newWorkout = [];
             exercisesDiv.forEach(exercise => {
                 const name = exercise.querySelector(".name").value;
                 const sets = parseInt(exercise.querySelector(".sets").value);
-                const reps = parseInt(exercise.querySelector(".reps").value);
-                const rest = parseInt(exercise.querySelector(".rest").value);
+                const setDetails = Array.from(exercise.querySelectorAll(".reps, .weight")).map(input => ({
+                    type: input.className,
+                    value: parseInt(input.value),
+                }));
 
-                // Collect weights for each set
-                const weights = Array.from(exercise.querySelectorAll(".weight"))
-                    .map(input => parseInt(input.value))
-                    .filter(weight => !isNaN(weight));
-
-                if (name && sets && reps && rest && weights.length === sets) {
-                    workout.push({ name, sets, reps, rest, weights, completedSets: 0 });
-                } else {
-                    alert("Please ensure weights match the number of sets for each exercise.");
-                }
+                newWorkout.push({ name, sets, setDetails });
             });
+
+            savedWorkouts.push({ name: workoutName, exercises: newWorkout });
+            localStorage.setItem("savedWorkouts", JSON.stringify(savedWorkouts));
+            loadSavedWorkouts();
+        }
+
+        // Load Saved Workouts
+        function loadSavedWorkouts() {
+            const workoutList = document.getElementById("workout-list");
+            workoutList.innerHTML = savedWorkouts
+                .map((workout, index) => `
+                    <li>
+                        <b>${workout.name}</b>
+                        <button onclick="loadWorkout(${index})">Load</button>
+                        <button onclick="deleteSavedWorkout(${index})">Delete</button>
+                    </li>
+                `).join("");
+        }
+
+        // Load Workout
+        function loadWorkout(index) {
+            const savedWorkout = savedWorkouts[index];
+            workout = savedWorkout.exercises;
+            startWorkout();
+        }
+
+        // Delete Saved Workout
+        function deleteSavedWorkout(index) {
+            savedWorkouts.splice(index, 1);
+            localStorage.setItem("savedWorkouts", JSON.stringify(savedWorkouts));
+            loadSavedWorkouts();
+        }
+
+        // Start Workout Function
+        function startWorkout() {
+            currentExerciseIndex = 0;
 
             if (workout.length > 0) {
                 document.getElementById("workout-creator").style.display = "none";
                 document.getElementById("workout-tracker").style.display = "block";
                 loadNextExercise();
             } else {
-                alert("Please fill out at least one exercise before starting!");
+                alert("Please create a workout before starting!");
             }
         }
 
@@ -134,12 +178,13 @@
             }
 
             const exercise = workout[currentExerciseIndex];
-            const currentWeight = exercise.weights[exercise.completedSets] || "N/A";
+            const currentReps = exercise.setDetails[currentExerciseIndex]?.value || "N/A";
+            const currentWeight = exercise.setDetails[currentExerciseIndex]?.value || "N/A";
 
             document.getElementById("current-exercise").innerHTML = `
                 <p><b>Exercise:</b> ${exercise.name}</p>
-                <p><b>Set:</b> ${exercise.completedSets + 1}/${exercise.sets}</p>
-                <p><b>Reps:</b> ${exercise.reps}</p>
+                <p><b>Set:</b> ${currentExerciseIndex + 1}/${exercise.sets}</p>
+                <p><b>Reps:</b> ${currentReps}</p>
                 <p><b>Weight:</b> ${currentWeight} lbs</p>
             `;
         }
@@ -147,33 +192,13 @@
         // Complete Set
         function completeSet() {
             const exercise = workout[currentExerciseIndex];
-            exercise.completedSets++;
+            currentExerciseIndex++;
 
-            if (exercise.completedSets >= exercise.sets) {
-                currentExerciseIndex++;
+            if (currentExerciseIndex >= workout.length) {
+                endWorkout();
+            } else {
+                loadNextExercise();
             }
-
-            startRest(exercise.rest);
-        }
-
-        // Rest Timer
-        function startRest(restTime) {
-            const timer = document.getElementById("timer");
-            let remaining = restTime;
-
-            timer.innerHTML = `<p style="font-size: 48px;">Rest: ${remaining}s</p>`;
-            const interval = setInterval(() => {
-                remaining--;
-                if (remaining > 5) {
-                    timer.innerHTML = `<p style="font-size: 48px;">Rest: ${remaining}s</p>`;
-                } else if (remaining > 0) {
-                    timer.innerHTML = `<p style="color: red; font-size: 48px;">Rest: ${remaining}s - Get Ready! Next set soon</p>`;
-                } else {
-                    clearInterval(interval);
-                    timer.innerHTML = ""; // Remove timer after rest
-                    loadNextExercise();
-                }
-            }, 1000);
         }
 
         // End Workout
@@ -201,54 +226,39 @@
             loadHistory();
         }
 
-        // Delete History
-        function deleteHistory() {
-            if (confirm("Are you sure you want to delete all workout history?")) {
-                history = [];
-                localStorage.setItem("history", JSON.stringify(history));
-                loadHistory();
-                alert("Workout history deleted.");
+        // Delete Selected History
+        function deleteSelectedHistory() {
+            const historyIndex = prompt("Enter the index of the history to delete (e.g., 1, 2, 3):");
+            if (!historyIndex || isNaN(historyIndex) || historyIndex < 1 || historyIndex > history.length) {
+                return alert("Invalid index. Please try again.");
             }
+
+            history.splice(historyIndex - 1, 1);
+            localStorage.setItem("history", JSON.stringify(history));
+            loadHistory();
         }
 
         // Load Workout History
         function loadHistory() {
             const historyList = document.getElementById("history-list");
             historyList.innerHTML = history
-                .map(entry => `
+                .map((entry, index) => `
                     <li>
-                        <b>Date:</b> ${entry.date.split("T")[0]}<br>
-                        <b>Start Time:</b> ${entry.startTime}<br>
-                        <b>End Time:</b> ${entry.endTime}<br>
-                        <b>Exercises:</b> 
-                        <ul>
-                            ${entry.workout.map(ex => `
-                                <li>${ex.name} - ${ex.sets} sets, ${ex.reps} reps, Rest: ${ex.rest}s, Weights: ${ex.weights.join(", ")} lbs</li>
-                            `).join("")}
-                        </ul>
-                        <b>Feedback:</b> ${entry.feedback}
+                        <b>${index + 1}. Date:</b> ${entry.date.split("T")[0]}<br>
+                        <b>Feedback:</b> ${entry.feedback}<br>
+                        <b>Exercises:</b>
+                        <ul>${entry.workout.map(ex => `
+                            <li>${ex.name} - ${ex.sets} sets, Weights: ${ex.setDetails.map(sd => sd.value).join(", ")}</li>
+                        `).join("")}</ul>
                     </li>
                 `).join("");
-        }
-
-        // Initialize Calendar
-        function initCalendar() {
-            const calendarEl = document.getElementById("calendar");
-            const calendar = new FullCalendar.Calendar(calendarEl, {
-                initialView: "dayGridMonth",
-                events: history.map(entry => ({
-                    title: `Workout (${entry.feedback})`,
-                    start: entry.date.split("T")[0],
-                })),
-            });
-            calendar.render();
         }
 
         // Initialize
         document.addEventListener("DOMContentLoaded", () => {
             initializeFirstExercise();
             loadHistory();
-            initCalendar();
+            loadSavedWorkouts();
         });
     </script>
 </body>
