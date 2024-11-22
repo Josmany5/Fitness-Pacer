@@ -1,4 +1,3 @@
-
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -46,6 +45,16 @@
                 setCurrentExercise('');
             };
 
+            const addSet = (exerciseIndex) => {
+                const newWorkout = workout.map((exercise, index) => {
+                    if (index === exerciseIndex) {
+                        return { ...exercise, sets: [...exercise.sets, { reps: 0, weight: 0, rest: 0 }] };
+                    }
+                    return exercise;
+                });
+                setWorkout(newWorkout);
+            };
+
             const handleSetChange = (exerciseIndex, setIndex, field, value) => {
                 const newWorkout = workout.map((exercise, index) => {
                     if (index === exerciseIndex) {
@@ -89,17 +98,18 @@
                         if (index === existingExerciseIndex) {
                             return {
                                 ...set,
-                                reps: [...set.reps, currentSet.reps],
-                                weight: [...set.weight, currentSet.weight],
-                                exertion: [...set.exertion, currentSet.exertion],
-                                rest: [...set.rest, timer]
+                                reps: `${set.reps}, ${currentSet.reps}`,
+                                weight: `${set.weight}, ${currentSet.weight}`,
+                                exertion: `${set.exertion}, ${currentSet.exertion}`,
+                                rest: `${set.rest}, ${timer}`,
+                                totalSets: (set.totalSets || 1) + 1
                             };
                         }
                         return set;
                     });
                     setLiveWorkout(updatedLiveWorkout);
                 } else {
-                    setLiveWorkout([...liveWorkout, { exercise: currentExercise, reps: [currentSet.reps], weight: [currentSet.weight], exertion: [currentSet.exertion], rest: [timer] }]);
+                    setLiveWorkout([...liveWorkout, { exercise: currentExercise, ...currentSet, rest: timer, totalSets: 1 }]);
                 }
                 setCurrentExercise('');
                 setCurrentSet({ reps: 0, weight: 0, exertion: 0 });
@@ -170,6 +180,7 @@
                                             </div>
                                         </div>
                                     ))}
+                                    <button onClick={() => addSet(exerciseIndex)} className="bg-blue-500 text-white px-4 py-2 rounded">Add Set</button>
                                 </div>
                             ))}
                             <div className="mb-4">
@@ -251,11 +262,11 @@
                                 <h2 className="text-2xl font-bold mb-4">Live Workout Log</h2>
                                 {liveWorkout.map((set, index) => (
                                     <div key={index} className="mb-4 border p-4 rounded">
-                                        <h3 className="font-bold">{set.exercise} - {set.reps.length} sets</h3>
-                                        <p>Reps: {set.reps.join(', ')}</p>
-                                        <p>Weight: {set.weight.join(', ')}</p>
-                                        <p>Exertion Level: {set.exertion.join(', ')}</p>
-                                        <p>Rest Time: {set.rest.join(', ')}s</p>
+                                        <h3 className="font-bold">{set.exercise} - Total Sets: {set.totalSets}</h3>
+                                        <p>Reps: {set.reps}</p>
+                                        <p>Weight: {set.weight}</p>
+                                        <p>Exertion Level: {set.exertion}</p>
+                                        <p>Rest Time: {set.rest}s</p>
                                     </div>
                                 ))}
                             </div>
@@ -273,17 +284,17 @@
                                     {entry.liveWorkout ? (
                                         entry.liveWorkout.map((set, setIndex) => (
                                             <div key={setIndex} className="mb-4">
-                                                <h4 className="font-bold">{set.exercise} - {set.reps.length} sets</h4>
-                                                <p>Reps: {set.reps.join(', ')}</p>
-                                                <p>Weight: {set.weight.join(', ')}</p>
-                                                <p>Exertion Level: {set.exertion.join(', ')}</p>
-                                                <p>Rest Time: {set.rest.join(', ')}s</p>
+                                                <h4 className="font-bold">{set.exercise} - Total Sets: {set.totalSets}</h4>
+                                                <p>Reps: {set.reps}</p>
+                                                <p>Weight: {set.weight}</p>
+                                                <p>Exertion Level: {set.exertion}</p>
+                                                <p>Rest Time: {set.rest}s</p>
                                             </div>
                                         ))
                                     ) : (
                                         entry.workout.map((exercise, exerciseIndex) => (
                                             <div key={exerciseIndex} className="mb-4">
-                                                <h3 className="font-bold">{exercise.name}</h3>
+                                                <h3 className="font-bold">{exercise.name} - Total Sets: {exercise.sets.length}</h3>
                                                 {exercise.sets.map((set, setIndex) => (
                                                     <div key={setIndex} className="mb-4">
                                                         <h4 className="font-bold">Set {setIndex + 1}</h4>
