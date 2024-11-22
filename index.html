@@ -56,6 +56,7 @@
         let history = JSON.parse(localStorage.getItem("history")) || [];
         let savedWorkouts = JSON.parse(localStorage.getItem("savedWorkouts")) || [];
         let currentExerciseIndex = 0;
+        let timerInterval;
 
         // Add Exercise Function
         function addExercise() {
