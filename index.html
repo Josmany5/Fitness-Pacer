@@ -152,18 +152,38 @@ useEffect(() => {
                 setPage('liveWorkout');
             };
 
-            const completeLiveSet = () => {
-                setIsResting(true);
-                setTimer(0);
-            };
+const completeLiveSet = () => {
+    setIsResting(true);
+    setTimer(0);
+    const existingExerciseIndex = liveWorkout.findIndex(set => set.exercise === currentExercise);
+    if (existingExerciseIndex !== -1) {
+        const updatedLiveWorkout = [...liveWorkout];
+        updatedLiveWorkout[existingExerciseIndex] = {
+            ...updatedLiveWorkout[existingExerciseIndex],
+            reps: updatedLiveWorkout[existingExerciseIndex].reps + ',' + currentSet.reps,
+            weight: updatedLiveWorkout[existingExerciseIndex].weight + ',' + currentSet.weight,
+            exertion: updatedLiveWorkout[existingExerciseIndex].exertion + ',' + currentSet.exertion,
+            totalSets: updatedLiveWorkout[existingExerciseIndex].totalSets + 1
+        };
+        setLiveWorkout(updatedLiveWorkout);
+    } else {
+        setLiveWorkout([...liveWorkout, { ...currentSet, exercise: currentExercise, totalSets: 1 }]);
+    }
+};
 
-            const restDone = () => {
-                setIsResting(false);
-                const updatedLiveWorkout = [...liveWorkout];
-                updatedLiveWorkout[updatedLiveWorkout.length - 1].rest = formatTime(timer);
-                setLiveWorkout(updatedLiveWorkout);
-                setTimer(0);
-            };
+const restDone = () => {
+    setIsResting(false);
+    const updatedLiveWorkout = [...liveWorkout];
+    const lastExerciseIndex = updatedLiveWorkout.length - 1;
+    updatedLiveWorkout[lastExerciseIndex] = {
+        ...updatedLiveWorkout[lastExerciseIndex],
+        rest: updatedLiveWorkout[lastExerciseIndex].rest 
+            ? updatedLiveWorkout[lastExerciseIndex].rest + ',' + formatTime(timer)
+            : formatTime(timer)
+    };
+    setLiveWorkout(updatedLiveWorkout);
+    setTimer(0);
+};
 
             const finishLiveWorkout = () => {
                 setHistory([...history, { liveWorkout, date: new Date() }]);
@@ -326,18 +346,18 @@ useEffect(() => {
                                     <button onClick={restDone} className="bg-green-500 text-white px-4 py-2 rounded mt-2">Rest Done</button>
                                 </div>
                             )}
-                            <div className="mb-4">
-                                <h2 className="text-2xl font-bold mb-4">Live Workout Log</h2>
-                                {liveWorkout.map((set, index) => (
-                                    <div key={index} className="mb-4 border p-4 rounded">
-                                        <h3 className="font-bold">{set.exercise} - Total Sets: {set.totalSets}</h3>
-                                        <p>Reps: {set.reps}</p>
-                                        <p>Weight: {set.weight}</p>
-                                        <p>Exertion Level: {set.exertion}</p>
-                                        <p>Rest Time: {set.rest}</p>
-                                    </div>
-                                ))}
-                            </div>
+<div className="mb-4">
+    <h2 className="text-2xl font-bold mb-4">Live Workout Log</h2>
+    {liveWorkout.map((set, index) => (
+        <div key={index} className="mb-4 border p-4 rounded">
+            <h3 className="font-bold">{set.exercise} - Total Sets: {set.totalSets}</h3>
+            <p>Reps: {set.reps}</p>
+            <p>Weight: {set.weight}</p>
+            <p>Exertion Level: {set.exertion}</p>
+            <p>Rest Time: {set.rest}</p>
+        </div>
+    ))}
+</div>
                             <button onClick={finishLiveWorkout} className="bg-green-500 text-white px-4 py-2 rounded">Finish Workout</button>
                             <button onClick={() => setPage('home')} className="bg-gray-500 text-white px-4 py-2 rounded ml-2">Back to Menu</button>
                         </div>
