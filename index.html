@@ -1,3 +1,4 @@
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -12,7 +13,7 @@
     <script type="text/babel">
         const { useState, useEffect } = React;
 
-        const exercisesList = [
+        const initialExercisesList = [
             "Squat", "Deadlift", "Pulldown", "Row", "Benchpress", "Shoulderpress", 
             "Bicep Curls", "Tricep Extensions", "Ham Curl", "Glute Thrust", 
             "Shrugs", "Chest Fly", "Delt Fly"
@@ -29,6 +30,7 @@
             const [isResting, setIsResting] = useState(false);
             const [savedWorkouts, setSavedWorkouts] = useState([]);
             const [workoutName, setWorkoutName] = useState('');
+            const [exercisesList, setExercisesList] = useState(initialExercisesList);
 
             useEffect(() => {
                 let interval;
@@ -40,9 +42,24 @@
                 return () => clearInterval(interval);
             }, [isResting]);
 
-            const addExercise = () => {
-                setWorkout([...workout, { name: currentExercise, sets: [] }]);
+            const resetCreateWorkoutPage = () => {
+                setWorkout([]);
                 setCurrentExercise('');
+                setWorkoutName('');
+            };
+
+            const addExercise = () => {
+                if (currentExercise) {
+                    setWorkout([...workout, { name: currentExercise, sets: [] }]);
+                    setCurrentExercise('');
+                }
+            };
+
+            const addCustomExercise = () => {
+                if (currentExercise && !exercisesList.includes(currentExercise)) {
+                    setExercisesList([...exercisesList, currentExercise]);
+                    addExercise();
+                }
             };
 
             const addSet = (exerciseIndex) => {
@@ -79,6 +96,7 @@
             const finishWorkout = () => {
                 setHistory([...history, { workout, date: new Date() }]);
                 setPage('home');
+                resetCreateWorkoutPage();
             };
 
             const startLiveWorkout = () => {
@@ -125,6 +143,7 @@
             const saveWorkout = () => {
                 setSavedWorkouts([...savedWorkouts, { name: workoutName, workout }]);
                 setWorkoutName('');
+                resetCreateWorkoutPage();
             };
 
             const loadWorkout = (savedWorkout) => {
@@ -132,12 +151,24 @@
                 setPage('workout');
             };
 
+            const editSavedWorkout = (index) => {
+                const workoutToEdit = savedWorkouts[index];
+                setWorkout(workoutToEdit.workout);
+                setWorkoutName(workoutToEdit.name);
+                setPage('createWorkout');
+            };
+
+            const deleteSavedWorkout = (index) => {
+                const newSavedWorkouts = savedWorkouts.filter((_, i) => i !== index);
+                setSavedWorkouts(newSavedWorkouts);
+            };
+
             return (
                 <div className="container mx-auto p-4">
                     {page === 'home' && (
                         <div className="text-center">
                             <h1 className="text-4xl font-bold mb-4">Fitness Pacer</h1>
-                            <button onClick={() => setPage('createWorkout')} className="bg-blue-500 text-white px-4 py-2 rounded m-2">Create Your Workout</button>
+                            <button onClick={() => { setPage('createWorkout'); resetCreateWorkoutPage(); }} className="bg-blue-500 text-white px-4 py-2 rounded m-2">Create Your Workout</button>
                             <button onClick={() => setPage('liveWorkout')} className="bg-green-500 text-white px-4 py-2 rounded m-2">Live Workout</button>
                             <button onClick={() => setPage('history')} className="bg-gray-500 text-white px-4 py-2 rounded m-2">View History</button>
                             <button onClick={() => setPage('savedWorkouts')} className="bg-yellow-500 text-white px-4 py-2 rounded m-2">Saved Workouts</button>
@@ -156,7 +187,10 @@
                                     ))}
                                 </select>
                                 <input type="text" placeholder="Or enter custom exercise" className="border p-2 rounded w-full mt-2" value={currentExercise} onChange={(e) => setCurrentExercise(e.target.value)} />
-                                <button onClick={addExercise} className="bg-blue-500 text-white px-4 py-2 rounded mt-2">Add Exercise</button>
+                                <div className="flex space-x-2 mt-2">
+                                    <button onClick={addExercise} className="bg-blue-500 text-white px-4 py-2 rounded">Add Exercise</button>
+                                    <button onClick={addCustomExercise} className="bg-green-500 text-white px-4 py-2 rounded">Add Custom Exercise</button>
+                                </div>
                             </div>
                             {workout.map((exercise, exerciseIndex) => (
                                 <div key={exerciseIndex} className="mb-4">
@@ -190,7 +224,7 @@
                             <div className="mb-4">
                                 <button onClick={startWorkout} className="bg-green-500 text-white px-4 py-2 rounded">Start Workout</button>
                             </div>
-                            <button onClick={() => setPage('home')} className="bg-gray-500 text-white px-4 py-2 rounded">Back to Menu</button>
+                            <button onClick={() => { setPage('home'); resetCreateWorkoutPage(); }} className="bg-gray-500 text-white px-4 py-2 rounded">Back to Menu</button>
                         </div>
                     )}
 
@@ -212,7 +246,7 @@
                             ))}
                             {isResting ? (
                                 <div className="text-center mb-4">
-                                    <h3 className="text-xl font-bold">Rest Time: {timer}s</h3>
+                                    <h3 className="text-4xl font-bold">Rest Time: {timer}s</h3>
                                 </div>
                             ) : (
                                 <button onClick={completeSet} className="bg-blue-500 text-white px-4 py-2 rounded">Complete Set</button>
@@ -254,8 +288,8 @@
                             <button onClick={completeLiveSet} className="bg-blue-500 text-white px-4 py-2 rounded">Start Rest</button>
                             {isResting && (
                                 <div className="text-center mb-4">
-                                    <h3 className="text-xl font-bold">Rest Timer: {timer}s</h3>
-                                    <button onClick={restDone} className="bg-green-500 text-white px-4 py-2 rounded">Rest Done</button>
+                                    <h3 className="text-4xl font-bold">Rest Timer: {timer}s</h3>
+                                    <button onClick={restDone} className="bg-green-500 text-white px-4 py-2 rounded mt-2">Rest Done</button>
                                 </div>
                             )}
                             <div className="mb-4">
@@ -271,7 +305,7 @@
                                 ))}
                             </div>
                             <button onClick={finishLiveWorkout} className="bg-green-500 text-white px-4 py-2 rounded">Finish Workout</button>
-                            <button onClick={() => setPage('home')} className="bg-gray-500 text-white px-4 py-2 rounded">Back to Menu</button>
+                            <button onClick={() => setPage('home')} className="bg-gray-500 text-white px-4 py-2 rounded ml-2">Back to Menu</button>
                         </div>
                     )}
 
@@ -319,7 +353,11 @@
                             {savedWorkouts.map((savedWorkout, index) => (
                                 <div key={index} className="mb-4 border p-4 rounded">
                                     <h3 className="font-bold">{savedWorkout.name}</h3>
-                                    <button onClick={() => loadWorkout(savedWorkout)} className="bg-blue-500 text-white px-4 py-2 rounded mt-2">Load Workout</button>
+                                    <div className="flex space-x-2 mt-2">
+                                        <button onClick={() => loadWorkout(savedWorkout)} className="bg-blue-500 text-white px-4 py-2 rounded">Load Workout</button>
+                                        <button onClick={() => editSavedWorkout(index)} className="bg-yellow-500 text-white px-4 py-2 rounded">Edit</button>
+                                        <button onClick={() => deleteSavedWorkout(index)} className="bg-red-500 text-white px-4 py-2 rounded">Delete</button>
+                                    </div>
                                 </div>
                             ))}
                             <button onClick={() => setPage('home')} className="bg-gray-500 text-white px-4 py-2 rounded">Back to Menu</button>
