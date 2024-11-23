@@ -33,6 +33,51 @@
             const [exercisesList, setExercisesList] = useState(initialExercisesList);
             const [currentExerciseIndex, setCurrentExerciseIndex] = useState(0);
             const [currentSetIndex, setCurrentSetIndex] = useState(0);
+            const [user, setUser] = useState(null);
+            const [username, setUsername] = useState('');
+            const [password, setPassword] = useState('');
+
+            useEffect(() => {
+                const storedUser = localStorage.getItem('user');
+                if (storedUser) {
+                    setUser(JSON.parse(storedUser));
+                }
+            }, []);
+
+            const handleLogin = () => {
+                // In a real app, you would validate credentials against a backend
+                const newUser = { username, password };
+                setUser(newUser);
+                localStorage.setItem('user', JSON.stringify(newUser));
+                
+                // Load user-specific data
+                const storedSavedWorkouts = localStorage.getItem(`savedWorkouts_${username}`);
+                if (storedSavedWorkouts) {
+                    setSavedWorkouts(JSON.parse(storedSavedWorkouts));
+                }
+                
+                const storedHistory = localStorage.getItem(`history_${username}`);
+                if (storedHistory) {
+                    setHistory(JSON.parse(storedHistory));
+                }
+                
+                setUsername('');
+                setPassword('');
+            };
+
+            const handleSignup = () => {
+                // In a real app, you would send this data to a backend
+                const newUser = { username, password };
+                setUser(newUser);
+                localStorage.setItem('user', JSON.stringify(newUser));
+                setUsername('');
+                setPassword('');
+            };
+
+            const handleLogout = () => {
+                setUser(null);
+                localStorage.removeItem('user');
+            };
 
 useEffect(() => {
                 let interval;
@@ -141,11 +186,17 @@ useEffect(() => {
             };
 
             const finishWorkout = () => {
-                setHistory([...history, { workout, date: new Date() }]);
-                setPage('home');
-                resetCreateWorkoutPage();
-                setCurrentExerciseIndex(0);
-                setCurrentSetIndex(0);
+                if (user) {
+                    const updatedHistory = [...history, { workout, date: new Date() }];
+                    setHistory(updatedHistory);
+                    localStorage.setItem(`history_${user.username}`, JSON.stringify(updatedHistory));
+                    setPage('home');
+                    resetCreateWorkoutPage();
+                    setCurrentExerciseIndex(0);
+                    setCurrentSetIndex(0);
+                } else {
+                    alert('Please log in to save workout history');
+                }
             };
 
             const startLiveWorkout = () => {
@@ -186,20 +237,36 @@ const restDone = () => {
 };
 
             const finishLiveWorkout = () => {
-                setHistory([...history, { liveWorkout, date: new Date() }]);
-                setLiveWorkout([]);
-                setPage('home');
+                if (user) {
+                    const updatedHistory = [...history, { liveWorkout, date: new Date() }];
+                    setHistory(updatedHistory);
+                    localStorage.setItem(`history_${user.username}`, JSON.stringify(updatedHistory));
+                    setLiveWorkout([]);
+                    setPage('home');
+                } else {
+                    alert('Please log in to save workout history');
+                }
             };
 
             const saveWorkout = () => {
-                setSavedWorkouts([...savedWorkouts, { name: workoutName, workout }]);
-                setWorkoutName('');
-                resetCreateWorkoutPage();
+                if (user) {
+                    const updatedSavedWorkouts = [...savedWorkouts, { name: workoutName, workout }];
+                    setSavedWorkouts(updatedSavedWorkouts);
+                    localStorage.setItem(`savedWorkouts_${user.username}`, JSON.stringify(updatedSavedWorkouts));
+                    setWorkoutName('');
+                    resetCreateWorkoutPage();
+                } else {
+                    alert('Please log in to save workouts');
+                }
             };
 
             const loadWorkout = (savedWorkout) => {
-                setWorkout(savedWorkout.workout);
-                startWorkout();
+                if (user) {
+                    setWorkout(savedWorkout.workout);
+                    startWorkout();
+                } else {
+                    alert('Please log in to load workouts');
+                }
             };
 
             const editSavedWorkout = (index) => {
@@ -219,10 +286,24 @@ const restDone = () => {
                     {page === 'home' && (
                         <div className="text-center">
                             <h1 className="text-4xl font-bold mb-4">Fitness Pacer</h1>
-                            <button onClick={() => { setPage('createWorkout'); resetCreateWorkoutPage(); }} className="bg-blue-500 text-white px-4 py-2 rounded m-2">Create Your Workout</button>
-                            <button onClick={() => setPage('liveWorkout')} className="bg-green-500 text-white px-4 py-2 rounded m-2">Live Workout</button>
-                            <button onClick={() => setPage('history')} className="bg-gray-500 text-white px-4 py-2 rounded m-2">View History</button>
-                            <button onClick={() => setPage('savedWorkouts')} className="bg-yellow-500 text-white px-4 py-2 rounded m-2">Saved Workouts</button>
+                            {!user ? (
+                                <div>
+                                    <h2 className="text-2xl font-bold mb-2">Login</h2>
+                                    <input type="text" placeholder="Username" value={username} onChange={(e) => setUsername(e.target.value)} className="border p-2 rounded w-64 mb-2" />
+                                    <input type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} className="border p-2 rounded w-64 mb-2" />
+                                    <button onClick={handleLogin} className="bg-blue-500 text-white px-4 py-2 rounded m-2">Login</button>
+                                    <button onClick={handleSignup} className="bg-green-500 text-white px-4 py-2 rounded m-2">Sign Up</button>
+                                </div>
+                            ) : (
+                                <div>
+                                    <p className="text-xl mb-4">Welcome, {user.username}!</p>
+                                    <button onClick={() => { setPage('createWorkout'); resetCreateWorkoutPage(); }} className="bg-blue-500 text-white px-4 py-2 rounded m-2">Create Your Workout</button>
+                                    <button onClick={() => setPage('liveWorkout')} className="bg-green-500 text-white px-4 py-2 rounded m-2">Live Workout</button>
+                                    <button onClick={() => setPage('history')} className="bg-gray-500 text-white px-4 py-2 rounded m-2">View History</button>
+                                    <button onClick={() => setPage('savedWorkouts')} className="bg-yellow-500 text-white px-4 py-2 rounded m-2">Saved Workouts</button>
+                                    <button onClick={handleLogout} className="bg-red-500 text-white px-4 py-2 rounded m-2">Logout</button>
+                                </div>
+                            )}
                         </div>
                     )}
 
