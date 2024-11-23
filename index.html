@@ -31,16 +31,29 @@
             const [savedWorkouts, setSavedWorkouts] = useState([]);
             const [workoutName, setWorkoutName] = useState('');
             const [exercisesList, setExercisesList] = useState(initialExercisesList);
+            const [currentExerciseIndex, setCurrentExerciseIndex] = useState(0);
+            const [currentSetIndex, setCurrentSetIndex] = useState(0);
 
-            useEffect(() => {
+useEffect(() => {
                 let interval;
-                if (isResting) {
+                if (page === 'workout' && isResting && timer > 0) {
+                    interval = setInterval(() => {
+                        setTimer(prevTime => {
+                            if (prevTime > 0) {
+                                return prevTime - 1;
+                            } else {
+                                setIsResting(false);
+                                return 0;
+                            }
+                        });
+                    }, 1000);
+                } else if (page === 'liveWorkout' && isResting) {
                     interval = setInterval(() => {
                         setTimer(prevTime => prevTime + 1);
                     }, 1000);
                 }
                 return () => clearInterval(interval);
-            }, [isResting]);
+            }, [page, isResting, timer]);
 
             const resetCreateWorkoutPage = () => {
                 setWorkout([]);
@@ -83,20 +96,56 @@
                 setWorkout(newWorkout);
             };
 
+            const removeExercise = (indexToRemove) => {
+                setWorkout(workout.filter((_, index) => index !== indexToRemove));
+            };
+
             const startWorkout = () => {
+                setCurrentExerciseIndex(0);
+                setCurrentSetIndex(0);
                 setPage('workout');
             };
 
+            const formatTime = (timeInSeconds) => {
+                const minutes = Math.floor(timeInSeconds / 60);
+                const seconds = timeInSeconds % 60;
+                return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+            };
+
+            const parseTime = (timeString) => {
+                const [minutes, seconds] = timeString.split(':').map(Number);
+                return minutes * 60 + seconds;
+            };
+
             const completeSet = () => {
-                const currentSet = workout[0].sets[0]; // Example: first exercise, first set
-                setTimer(currentSet.rest);
+                const currentExercise = workout[currentExerciseIndex];
+                const currentSet = currentExercise.sets[currentSetIndex];
+                const restTimeInSeconds = parseTime(currentSet.rest);
+                setTimer(restTimeInSeconds);
                 setIsResting(true);
+            };
+
+            const nextSet = () => {
+                setIsResting(false);
+                setTimer(0);
+                if (currentSetIndex < workout[currentExerciseIndex].sets.length - 1) {
+                    setCurrentSetIndex(currentSetIndex + 1);
+                } else {
+                    if (currentExerciseIndex < workout.length - 1) {
+                        setCurrentExerciseIndex(currentExerciseIndex + 1);
+                        setCurrentSetIndex(0);
+                    } else {
+                        finishWorkout();
+                    }
+                }
             };
 
             const finishWorkout = () => {
                 setHistory([...history, { workout, date: new Date() }]);
                 setPage('home');
                 resetCreateWorkoutPage();
+                setCurrentExerciseIndex(0);
+                setCurrentSetIndex(0);
             };
 
             const startLiveWorkout = () => {
@@ -110,27 +159,9 @@
 
             const restDone = () => {
                 setIsResting(false);
-                const existingExerciseIndex = liveWorkout.findIndex(set => set.exercise === currentExercise);
-                if (existingExerciseIndex !== -1) {
-                    const updatedLiveWorkout = liveWorkout.map((set, index) => {
-                        if (index === existingExerciseIndex) {
-                            return {
-                                ...set,
-                                reps: `${set.reps}, ${currentSet.reps}`,
-                                weight: `${set.weight}, ${currentSet.weight}`,
-                                exertion: `${set.exertion}, ${currentSet.exertion}`,
-                                rest: `${set.rest}, ${timer}`,
-                                totalSets: (set.totalSets || 1) + 1
-                            };
-                        }
-                        return set;
-                    });
-                    setLiveWorkout(updatedLiveWorkout);
-                } else {
-                    setLiveWorkout([...liveWorkout, { exercise: currentExercise, ...currentSet, rest: timer, totalSets: 1 }]);
-                }
-                setCurrentExercise('');
-                setCurrentSet({ reps: 0, weight: 0, exertion: 0 });
+                const updatedLiveWorkout = [...liveWorkout];
+                updatedLiveWorkout[updatedLiveWorkout.length - 1].rest = formatTime(timer);
+                setLiveWorkout(updatedLiveWorkout);
                 setTimer(0);
             };
 
@@ -148,7 +179,7 @@
 
             const loadWorkout = (savedWorkout) => {
                 setWorkout(savedWorkout.workout);
-                setPage('workout');
+                startWorkout();
             };
 
             const editSavedWorkout = (index) => {
@@ -208,13 +239,19 @@
                                                     <input type="number" placeholder="Weight" value={set.weight} onChange={(e) => handleSetChange(exerciseIndex, setIndex, 'weight', e.target.value)} className="border p-2 rounded w-full" />
                                                 </div>
                                                 <div className="w-1/4">
-                                                    <label className="block mb-1">Rest Time</label>
-                                                    <input type="number" placeholder="Rest Time" value={set.rest} onChange={(e) => handleSetChange(exerciseIndex, setIndex, 'rest', e.target.value)} className="border p-2 rounded w-full" />
+                                                    <label className="block mb-1">Rest Time (mm:ss)</label>
+                                                    <input type="text" placeholder="00:00" value={set.rest} onChange={(e) => {
+                                                        const value = e.target.value;
+                                                        if (/^[0-9:]*$/.test(value)) {
+                                                            handleSetChange(exerciseIndex, setIndex, 'rest', value);
+                                                        }
+                                                    }} className="border p-2 rounded w-full" />
                                                 </div>
                                             </div>
                                         </div>
                                     ))}
-                                    <button onClick={() => addSet(exerciseIndex)} className="bg-blue-500 text-white px-4 py-2 rounded">Add Set</button>
+<button onClick={() => addSet(exerciseIndex)} className="bg-blue-500 text-white px-4 py-2 rounded mr-2">Add Set</button>
+<button onClick={() => removeExercise(exerciseIndex)} className="bg-red-500 text-white px-4 py-2 rounded">Remove Exercise</button>
                                 </div>
                             ))}
                             <div className="mb-4">
@@ -229,29 +266,26 @@
                     )}
 
                     {page === 'workout' && (
-                        <div>
+                        <div className="text-center">
                             <h2 className="text-2xl font-bold mb-4">Workout</h2>
-                            {workout.map((exercise, exerciseIndex) => (
-                                <div key={exerciseIndex} className="mb-4">
-                                    <h3 className="font-bold">{exercise.name}</h3>
-                                    {exercise.sets.map((set, setIndex) => (
-                                        <div key={setIndex} className="mb-4">
-                                            <h4 className="font-bold">Set {setIndex + 1}</h4>
-                                            <p>Reps: {set.reps}</p>
-                                            <p>Weight: {set.weight}</p>
-                                            <p>Rest Time: {set.rest}</p>
+                            {workout.length > 0 && (
+                                <div className="mb-8">
+                                    <h3 className="text-4xl font-bold mb-4">{workout[currentExerciseIndex].name}</h3>
+                                    <h4 className="text-2xl font-bold mb-2">Set {currentSetIndex + 1} of {workout[currentExerciseIndex].sets.length}</h4>
+                                    <p className="text-3xl mb-2">Reps: {workout[currentExerciseIndex].sets[currentSetIndex].reps}</p>
+                                    <p className="text-3xl mb-2">Weight: {workout[currentExerciseIndex].sets[currentSetIndex].weight}</p>
+                                    <p className="text-3xl mb-2">Rest: {workout[currentExerciseIndex].sets[currentSetIndex].rest}</p>
+                                    {isResting ? (
+                                        <div className="mb-4">
+                                            <h3 className="text-5xl font-bold">Rest Time: {formatTime(timer)}</h3>
+                                            <button onClick={nextSet} className="bg-green-500 text-white px-6 py-3 rounded text-xl mt-4">Next Set</button>
                                         </div>
-                                    ))}
+                                    ) : (
+                                        <button onClick={completeSet} className="bg-blue-500 text-white px-6 py-3 rounded text-xl">Complete Set</button>
+                                    )}
                                 </div>
-                            ))}
-                            {isResting ? (
-                                <div className="text-center mb-4">
-                                    <h3 className="text-4xl font-bold">Rest Time: {timer}s</h3>
-                                </div>
-                            ) : (
-                                <button onClick={completeSet} className="bg-blue-500 text-white px-4 py-2 rounded">Complete Set</button>
                             )}
-                            <button onClick={finishWorkout} className="bg-green-500 text-white px-4 py-2 rounded">Finish Workout</button>
+                            <button onClick={finishWorkout} className="bg-red-500 text-white px-6 py-3 rounded text-xl">Finish Workout</button>
                         </div>
                     )}
 
@@ -288,7 +322,7 @@
                             <button onClick={completeLiveSet} className="bg-blue-500 text-white px-4 py-2 rounded">Start Rest</button>
                             {isResting && (
                                 <div className="text-center mb-4">
-                                    <h3 className="text-4xl font-bold">Rest Timer: {timer}s</h3>
+                                    <h3 className="text-4xl font-bold">Rest Timer: {formatTime(timer)}</h3>
                                     <button onClick={restDone} className="bg-green-500 text-white px-4 py-2 rounded mt-2">Rest Done</button>
                                 </div>
                             )}
@@ -300,7 +334,7 @@
                                         <p>Reps: {set.reps}</p>
                                         <p>Weight: {set.weight}</p>
                                         <p>Exertion Level: {set.exertion}</p>
-                                        <p>Rest Time: {set.rest}s</p>
+                                        <p>Rest Time: {set.rest}</p>
                                     </div>
                                 ))}
                             </div>
@@ -322,7 +356,7 @@
                                                 <p>Reps: {set.reps}</p>
                                                 <p>Weight: {set.weight}</p>
                                                 <p>Exertion Level: {set.exertion}</p>
-                                                <p>Rest Time: {set.rest}s</p>
+                                                <p>Rest Time: {set.rest}</p>
                                             </div>
                                         ))
                                     ) : (
