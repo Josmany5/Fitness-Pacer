@@ -70,7 +70,6 @@
         // MultiSetAdder Component
         const MultiSetAdder = ({ exerciseIndex, addSet }) => {
             const [numberOfSets, setNumberOfSets] = useState(1);
-            const [uniformSets, setUniformSets] = useState(false);
 
             return (
                 <div className="mb-4">
@@ -82,20 +81,11 @@
                         min="1"
                     />
                     <button 
-                        onClick={() => addSet(exerciseIndex, numberOfSets, uniformSets)}
+                        onClick={() => addSet(exerciseIndex, numberOfSets)}
                         className="bg-blue-500 text-white px-4 py-2 rounded mr-2"
                     >
                         Add Sets
                     </button>
-                    <label className="inline-flex items-center">
-                        <input 
-                            type="checkbox" 
-                            checked={uniformSets}
-                            onChange={(e) => setUniformSets(e.target.checked)}
-                            className="form-checkbox h-5 w-5 text-blue-600"
-                        />
-                        <span className="ml-2 text-gray-700">Uniform Sets</span>
-                    </label>
                 </div>
             );
         };
@@ -184,7 +174,7 @@
                 }
             };
 
-            const addSet = (exerciseIndex, numberOfSets = 1, uniformSets = false) => {
+            const addSet = (exerciseIndex, numberOfSets = 1) => {
                 const newWorkout = workout.map((exercise, index) => {
                     if (index === exerciseIndex) {
                         const newSets = [...exercise.sets];
