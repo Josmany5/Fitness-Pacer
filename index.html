@@ -113,11 +113,37 @@
             useTimer(page, isResting, timer, setTimer, setIsResting);
 
             useEffect(() => {
+                // Load all saved data when the app starts
                 const storedUser = localStorage.getItem('user');
                 if (storedUser) {
-                    setUser(JSON.parse(storedUser));
+                    const user = JSON.parse(storedUser);
+                    setUser(user);
+                    
+                    // Load history
+                    const storedHistory = localStorage.getItem(`history_${user.username}`);
+                    if (storedHistory) {
+                        setHistory(JSON.parse(storedHistory));
+                    }
+                    
+                    // Load saved workouts
+                    const storedWorkouts = localStorage.getItem(`savedWorkouts_${user.username}`);
+                    if (storedWorkouts) {
+                        setSavedWorkouts(JSON.parse(storedWorkouts));
+                    }
                 }
-            }, []);
+            }, []); // Empty dependency array means this runs once when component mounts
+
+            useEffect(() => {
+                if (user) {
+                    localStorage.setItem(`history_${user.username}`, JSON.stringify(history));
+                }
+            }, [history, user]);
+
+            useEffect(() => {
+                if (user) {
+                    localStorage.setItem(`savedWorkouts_${user.username}`, JSON.stringify(savedWorkouts));
+                }
+            }, [savedWorkouts, user]);
 
             const handleLogin = () => {
                 // In a real app, you would validate credentials against a backend
@@ -247,9 +273,9 @@
 
             const finishWorkout = () => {
                 if (user) {
-                    const updatedHistory = [...history, { workout, date: new Date() }];
-                    setHistory(updatedHistory);
-                    localStorage.setItem(`history_${user.username}`, JSON.stringify(updatedHistory));
+                    const newHistory = [...history, { workout, date: new Date() }];
+                    setHistory(newHistory);
+                    localStorage.setItem(`history_${user.username}`, JSON.stringify(newHistory));
                     setPage('home');
                     resetCreateWorkoutPage();
                     setCurrentExerciseIndex(0);
@@ -298,9 +324,9 @@
 
             const finishLiveWorkout = () => {
                 if (user) {
-                    const updatedHistory = [...history, { liveWorkout, date: new Date() }];
-                    setHistory(updatedHistory);
-                    localStorage.setItem(`history_${user.username}`, JSON.stringify(updatedHistory));
+                    const newHistory = [...history, { liveWorkout, date: new Date() }];
+                    setHistory(newHistory);
+                    localStorage.setItem(`history_${user.username}`, JSON.stringify(newHistory));
                     setLiveWorkout([]);
                     setPage('home');
                 } else {
@@ -310,9 +336,9 @@
 
             const saveWorkout = () => {
                 if (user) {
-                    const updatedSavedWorkouts = [...savedWorkouts, { name: workoutName, workout }];
-                    setSavedWorkouts(updatedSavedWorkouts);
-                    localStorage.setItem(`savedWorkouts_${user.username}`, JSON.stringify(updatedSavedWorkouts));
+                    const newSavedWorkouts = [...savedWorkouts, { name: workoutName, workout }];
+                    setSavedWorkouts(newSavedWorkouts);
+                    localStorage.setItem(`savedWorkouts_${user.username}`, JSON.stringify(newSavedWorkouts));
                     setWorkoutName('');
                     resetCreateWorkoutPage();
                 } else {
@@ -350,28 +376,50 @@
             };
 
             const deleteSavedWorkout = (index) => {
-                const newSavedWorkouts = savedWorkouts.filter((_, i) => i !== index);
-                setSavedWorkouts(newSavedWorkouts);
+                if (user) {
+                    const newSavedWorkouts = savedWorkouts.filter((_, i) => i !== index);
+                    setSavedWorkouts(newSavedWorkouts);
+                    localStorage.setItem(`savedWorkouts_${user.username}`, JSON.stringify(newSavedWorkouts));
+                }
             };
 
             const generateProgressData = () => {
                 const data = {};
                 history.forEach(entry => {
+                    if (!entry.date) return; // Skip if no date
+                    
                     const date = new Date(entry.date).toLocaleDateString();
+                    
                     if (entry.workout) {
                         entry.workout.forEach(exercise => {
                             if (!data[exercise.name]) {
-                                data[exercise.name] = {};
+                                data[exercise.name] = {
+                                    dates: [],
+                                    weights: []
+                                };
                             }
-                            data[exercise.name][date] = Math.max(...exercise.sets.map(set => parseInt(set.weight)));
+                            const maxWeight = Math.max(...exercise.sets.map(set => 
+                                parseInt(set.weight) || 0
+                            ));
+                            if (maxWeight > 0) {
+                                data[exercise.name].dates.push(date);
+                                data[exercise.name].weights.push(maxWeight);
+                            }
                         });
                     } else if (entry.liveWorkout) {
                         entry.liveWorkout.forEach(set => {
                             if (!data[set.exercise]) {
-                                data[set.exercise] = {};
+                                data[set.exercise] = {
+                                    dates: [],
+                                    weights: []
+                                };
                             }
-                            const weights = set.weight.split(',').map(w => parseInt(w));
-                            data[set.exercise][date] = Math.max(...weights);
+                            const weights = set.weight.split(',').map(w => parseInt(w) || 0);
+                            const maxWeight = Math.max(...weights);
+                            if (maxWeight > 0) {
+                                data[set.exercise].dates.push(date);
+                                data[set.exercise].weights.push(maxWeight);
+                            }
                         });
                     }
                 });
@@ -384,24 +432,55 @@
 
             useEffect(() => {
                 if (page === 'progress') {
+                    // Destroy existing charts first
+                    Object.keys(progressData).forEach(exercise => {
+                        const canvas = document.getElementById(`chart-${exercise}`);
+                        const existingChart = Chart.getChart(canvas);
+                        if (existingChart) {
+                            existingChart.destroy();
+                        }
+                    });
+
+                    // Create new charts
                     Object.entries(progressData).forEach(([exercise, data]) => {
                         const ctx = document.getElementById(`chart-${exercise}`);
+                        if (!ctx) return;
+
                         new Chart(ctx, {
                             type: 'line',
                             data: {
-                                labels: Object.keys(data),
+                                labels: data.dates,
                                 datasets: [{
                                     label: 'Max Weight (lbs)',
-                                    data: Object.values(data),
+                                    data: data.weights,
                                     borderColor: 'rgb(75, 192, 192)',
-                                    tension: 0.1
+                                    backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                                    tension: 0.1,
+                                    fill: true
                                 }]
                             },
                             options: {
                                 responsive: true,
+                                maintainAspectRatio: false,
+                                plugins: {
+                                    legend: {
+                                        display: true,
+                                        position: 'top'
+                                    }
+                                },
                                 scales: {
                                     y: {
-                                        beginAtZero: true
+                                        beginAtZero: true,
+                                        title: {
+                                            display: true,
+                                            text: 'Weight (lbs)'
+                                        }
+                                    },
+                                    x: {
+                                        title: {
+                                            display: true,
+                                            text: 'Date'
+                                        }
                                     }
                                 }
                             }
@@ -648,13 +727,17 @@
                             <h2 className="text-2xl font-bold mb-4">Workout Progress</h2>
                             <div className="grid grid-cols-2 gap-4">
                                 {Object.keys(progressData).map(exercise => (
-                                    <div key={exercise} className="mb-8">
+                                    <div key={exercise} className="mb-8 p-4 bg-white rounded shadow">
                                         <h3 className="text-xl font-bold mb-2">{exercise}</h3>
-                                        <canvas id={`chart-${exercise}`} style={{maxHeight: "300px"}}></canvas>
+                                        <div style={{height: "300px", position: "relative"}}>
+                                            <canvas id={`chart-${exercise}`}></canvas>
+                                        </div>
                                     </div>
                                 ))}
                             </div>
-                            <button onClick={() => setPage('home')} className="bg-gray-500 text-white px-4 py-2 rounded">Back to Menu</button>
+                            <button onClick={() => setPage('home')} className="bg-gray-500 text-white px-4 py-2 rounded mt-4">
+                                Back to Menu
+                            </button>
                         </div>
                     )}
                 </div>
