@@ -365,9 +365,17 @@
             };
 
             const completeLiveSet = () => {
+                if (!currentExercise || !currentSet.reps || !currentSet.weight) {
+                    alert('Please fill in exercise, reps, and weight');
+                    return;
+                }
+
+                console.log('Completing set:', { currentExercise, currentSet });
+                
                 setIsResting(true);
                 setTimer(0);
                 const existingExerciseIndex = liveWorkout.findIndex(set => set.exercise === currentExercise);
+                
                 if (existingExerciseIndex !== -1) {
                     const updatedLiveWorkout = [...liveWorkout];
                     updatedLiveWorkout[existingExerciseIndex] = {
@@ -377,9 +385,19 @@
                         exertion: updatedLiveWorkout[existingExerciseIndex].exertion + ',' + currentSet.exertion,
                         totalSets: updatedLiveWorkout[existingExerciseIndex].totalSets + 1
                     };
+                    console.log('Updating existing exercise:', updatedLiveWorkout[existingExerciseIndex]);
                     setLiveWorkout(updatedLiveWorkout);
                 } else {
-                    setLiveWorkout([...liveWorkout, { ...currentSet, exercise: currentExercise, totalSets: 1 }]);
+                    const newExercise = { 
+                        ...currentSet, 
+                        exercise: currentExercise, 
+                        totalSets: 1,
+                        reps: currentSet.reps.toString(),
+                        weight: currentSet.weight.toString(),
+                        exertion: currentSet.exertion.toString()
+                    };
+                    console.log('Adding new exercise:', newExercise);
+                    setLiveWorkout([...liveWorkout, newExercise]);
                 }
             };
 
@@ -399,17 +417,35 @@
 
             const finishLiveWorkout = () => {
                 if (user) {
+                    // Check if there are any exercises recorded
+                    if (liveWorkout.length === 0) {
+                        alert('No exercises recorded');
+                        return;
+                    }
+
+                    console.log('Current live workout:', liveWorkout);
+                    
                     const workoutEntry = {
                         liveWorkout,
                         date: new Date(),
                         notes: workoutNotes,
                         volume: calculateTotalVolume({ liveWorkout })
                     };
+                    
+                    console.log('Workout entry being saved:', workoutEntry);
+                    
                     const newHistory = [...history, workoutEntry];
                     setHistory(newHistory);
                     localStorage.setItem(`history_${user.username}`, JSON.stringify(newHistory));
+                    
+                    // Reset states
                     setLiveWorkout([]);
                     setWorkoutNotes('');
+                    setCurrentSet({ reps: 0, weight: 0, exertion: 0 });
+                    setCurrentExercise('');
+                    setTimer(0);
+                    setIsResting(false);
+                    
                     setPage('home');
                     updateStatistics();
                 } else {
