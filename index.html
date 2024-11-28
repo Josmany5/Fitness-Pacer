@@ -52,22 +52,9 @@
                 if (page === 'workout' && isResting && timer > 0) {
                     interval = setInterval(() => {
                         setTimer(prevTime => {
-                            if (prevTime <= 3 && prevTime > 0) {
-                                console.log('Playing countdown sound at', prevTime);
-                                vibrateDevice();
-                            }
-                            if (prevTime === 0) {
-                                console.log('Playing timer complete sound');
-                                vibrateDevice();
-                            }
                             if (prevTime > 0) {
                                 return prevTime - 1;
                             } else {
-                                try {
-                                    vibrateDevice();
-                                } catch (error) {
-                                    console.error('Sound play failed:', error);
-                                }
                                 setIsResting(false);
                                 return 0;
                             }
@@ -75,17 +62,7 @@
                     }, 1000);
                 } else if (page === 'liveWorkout' && isResting) {
                     interval = setInterval(() => {
-                        setTimer(prevTime => {
-                            const newTime = prevTime + 1;
-                            if (newTime % 60 === 0) {
-                                try {
-                                    vibrateDevice();
-                                } catch (error) {
-                                    console.error('Sound play failed:', error);
-                                }
-                            }
-                            return newTime;
-                        });
+                        setTimer(prevTime => prevTime + 1);
                     }, 1000);
                 }
                 return () => clearInterval(interval);
@@ -104,7 +81,6 @@
 
             const handleNumberChange = (e) => {
                 const value = e.target.value;
-                // Allow empty string (for deletion) or positive numbers
                 if (value === '' || parseInt(value) > 0) {
                     setNumberOfSets(value === '' ? '' : parseInt(value));
                 }
@@ -145,19 +121,14 @@
             const [exercisesList, setExercisesList] = useState(initialExercisesList);
             const [currentExerciseIndex, setCurrentExerciseIndex] = useState(0);
             const [currentSetIndex, setCurrentSetIndex] = useState(0);
-            const [user, setUser] = useState(null);
-            const [username, setUsername] = useState('');
-            const [password, setPassword] = useState('');
-            const [progressData, setProgressData] = useState({});
             const [workoutNotes, setWorkoutNotes] = useState('');
+            const [isLoading, setIsLoading] = useState(true);
             const [statistics, setStatistics] = useState({
                 totalWorkouts: 0,
                 totalVolume: 0,
                 personalBests: {},
                 frequentExercises: {}
             });
-            const [soundEnabled, setSoundEnabled] = useState(true);
-            const [isLoading, setIsLoading] = useState(true);
 
             // Use the custom timer hook
             useTimer(page, isResting, timer, setTimer, setIsResting);
@@ -663,7 +634,7 @@
             const updateStatistics = () => {
                 const stats = {
                     totalWorkouts: history.length,
-                    totalVolume: history.reduce((total, entry) => total + (entry.volume || calculateTotalVolume(entry)), 0), 0),
+                    totalVolume: history.reduce((total, entry) => total + (entry.volume || calculateTotalVolume(entry)), 0),
                     personalBests: calculatePersonalBests(),
                     frequentExercises: getMostFrequentExercises()
                 };
@@ -854,9 +825,17 @@
                                 </div>
                             )}
 
-                            {page === 'createWorkout' && renderWorkoutForm(saveWorkout, "Save Workout")}
+                            {page === 'createWorkout' && (
+                                <div className="text-lg">
+                                    {renderWorkoutForm(saveWorkout, "Save Workout")}
+                                </div>
+                            )}
 
-                            {page === 'editWorkout' && renderWorkoutForm(updateWorkout, "Update Workout")}
+                            {page === 'editWorkout' && (
+                                <div className="text-lg">
+                                    {renderWorkoutForm(updateWorkout, "Update Workout")}
+                                </div>
+                            )}
 
                             {page === 'workout' && (
                                 <div className="text-center">
@@ -1122,4 +1101,4 @@
         );
     </script>
 </body>
-</html>
+</html> 
