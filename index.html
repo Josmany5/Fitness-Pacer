@@ -32,9 +32,11 @@
 
         const parseTime = (timeString) => {
             try {
+                if (!timeString || timeString === '0') return 0;
                 const [minutes, seconds] = timeString.split(':').map(Number);
-                if (isNaN(minutes) || isNaN(seconds) || seconds >= 60) {
-                    throw new Error('Invalid time format');
+                if (isNaN(minutes) || isNaN(seconds) || seconds >= 60 || minutes < 0 || seconds < 0) {
+                    console.error('Invalid time format:', timeString);
+                    return 0;
                 }
                 return minutes * 60 + seconds;
             } catch (error) {
@@ -94,18 +96,24 @@
         const MultiSetAdder = ({ exerciseIndex, addSet }) => {
             const [numberOfSets, setNumberOfSets] = useState(1);
 
+            const handleAddSets = () => {
+                if (numberOfSets > 0) {
+                    addSet(exerciseIndex, numberOfSets);
+                }
+            };
+
             return (
-                <div className="mb-4">
+                <div className="mb-4 flex items-center space-x-2">
                     <input 
                         type="number" 
                         value={numberOfSets} 
-                        onChange={(e) => setNumberOfSets(Math.max(1, parseInt(e.target.value)))}
-                        className="border p-2 rounded w-1/4 mr-2"
+                        onChange={(e) => setNumberOfSets(Math.max(1, parseInt(e.target.value) || 1))}
+                        className="border p-2 rounded w-24 text-lg"
                         min="1"
                     />
                     <button 
-                        onClick={() => addSet(exerciseIndex, numberOfSets)}
-                        className="bg-blue-500 text-white px-4 py-2 rounded mr-2"
+                        onClick={handleAddSets}
+                        className="bg-blue-500 text-white px-4 py-2 rounded text-lg"
                     >
                         Add Sets
                     </button>
@@ -232,7 +240,7 @@
                     if (index === exerciseIndex) {
                         const newSets = [...exercise.sets];
                         for (let i = 0; i < numberOfSets; i++) {
-                            newSets.push({ reps: 0, weight: 0, rest: 0 });
+                            newSets.push({ reps: 0, weight: 0, rest: '0:00' });
                         }
                         return { ...exercise, sets: newSets };
                     }
@@ -280,13 +288,26 @@
             };
 
             const startWorkout = () => {
+                if (workout.length === 0) {
+                    alert('Please add at least one exercise before starting the workout');
+                    return;
+                }
+                
+                if (workout.some(exercise => exercise.sets.length === 0)) {
+                    alert('Please add at least one set to each exercise');
+                    return;
+                }
+                
                 setCurrentExerciseIndex(0);
                 setCurrentSetIndex(0);
                 setPage('workout');
             };
 
             const completeSet = () => {
-                setTimer(0);
+                // Get the rest time from the current set
+                const currentExerciseSet = workout[currentExerciseIndex].sets[currentSetIndex];
+                const restTimeInSeconds = parseTime(currentExerciseSet.rest);
+                setTimer(restTimeInSeconds);
                 setIsResting(true);
             };
 
@@ -306,6 +327,10 @@
             };
 
             const finishWorkout = () => {
+                if (!window.confirm('Are you sure you want to finish this workout?')) {
+                    return;
+                }
+                
                 const newHistory = [...history, { 
                     workout, 
                     date: new Date(),
@@ -621,7 +646,7 @@
             const updateStatistics = () => {
                 const stats = {
                     totalWorkouts: history.length,
-                    totalVolume: history.reduce((total, entry) => total + (entry.volume || calculateTotalVolume(entry)), 0),
+                    totalVolume: history.reduce((total, entry) => total + (entry.volume || calculateTotalVolume(entry)), 0), 0),
                     personalBests: calculatePersonalBests(),
                     frequentExercises: getMostFrequentExercises()
                 };
@@ -652,7 +677,10 @@
                     {workout.map((exercise, exerciseIndex) => (
                         <div key={exerciseIndex} className="mb-6 p-4 bg-white rounded shadow">
                             <h3 className="text-2xl font-bold mb-4">{exercise.name}</h3>
-                            <MultiSetAdder exerciseIndex={exerciseIndex} addSet={addSet} />
+                            <MultiSetAdder 
+                                exerciseIndex={exerciseIndex} 
+                                addSet={(exerciseIndex, numberOfSets) => addSet(exerciseIndex, numberOfSets)} 
+                            />
                             {exercise.sets.map((set, setIndex) => (
                                 <div key={setIndex} className="mb-6 p-4 bg-gray-50 rounded">
                                     <h4 className="text-xl font-bold mb-3">Set {setIndex + 1}</h4>
@@ -689,7 +717,7 @@
                                                     className="border p-3 rounded-l w-1/2 text-xl"
                                                     value={set.rest.split(':')[0] || '0'}
                                                     onChange={(e) => {
-                                                        const min = e.target.value;
+                                                        const min = Math.min(Math.max(0, parseInt(e.target.value) || 0), 59);
                                                         const sec = set.rest.split(':')[1] || '00';
                                                         handleSetChange(exerciseIndex, setIndex, 'rest', `${min}:${sec}`);
                                                     }}
@@ -703,7 +731,7 @@
                                                     value={set.rest.split(':')[1] || '00'}
                                                     onChange={(e) => {
                                                         const min = set.rest.split(':')[0] || '0';
-                                                        const sec = e.target.value.padStart(2, '0');
+                                                        const sec = Math.min(Math.max(0, parseInt(e.target.value) || 0), 59).toString().padStart(2, '0');
                                                         handleSetChange(exerciseIndex, setIndex, 'rest', `${min}:${sec}`);
                                                     }}
                                                 />
