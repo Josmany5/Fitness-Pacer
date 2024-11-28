@@ -9,7 +9,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
-<body class="bg-gray-100 font-roboto">
+<body>
     <div id="root"></div>
     <script src="https://unpkg.com/react@17/umd/react.development.js" crossorigin></script>
     <script src="https://unpkg.com/react-dom@17/umd/react-dom.development.js" crossorigin></script>
@@ -663,7 +663,7 @@
             const updateStatistics = () => {
                 const stats = {
                     totalWorkouts: history.length,
-                    totalVolume: history.reduce((total, entry) => total + (entry.volume || calculateTotalVolume(entry)), 0),
+                    totalVolume: history.reduce((total, entry) => total + (entry.volume || calculateTotalVolume(entry)), 0), 0),
                     personalBests: calculatePersonalBests(),
                     frequentExercises: getMostFrequentExercises()
                 };
@@ -1080,6 +1080,7 @@
             );
         };
 
+        // Error Boundary component
         class ErrorBoundary extends React.Component {
             constructor(props) {
                 super(props);
@@ -1112,12 +1113,13 @@
             }
         }
 
+        // Render the app
         ReactDOM.render(
             <ErrorBoundary>
                 <App />
-            </ErrorBoundary>, 
+            </ErrorBoundary>,
             document.getElementById('root')
         );
     </script>
 </body>
-</html> 
+</html>
