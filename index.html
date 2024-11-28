@@ -157,6 +157,7 @@
                 frequentExercises: {}
             });
             const [soundEnabled, setSoundEnabled] = useState(true);
+            const [isLoading, setIsLoading] = useState(true);
 
             // Use the custom timer hook
             useTimer(page, isResting, timer, setTimer, setIsResting);
@@ -164,17 +165,18 @@
             useEffect(() => {
                 try {
                     const storedHistory = localStorage.getItem('history');
-                    if (storedHistory) {
-                        setHistory(JSON.parse(storedHistory));
-                    }
-                    
                     const storedWorkouts = localStorage.getItem('savedWorkouts');
-                    if (storedWorkouts) {
-                        setSavedWorkouts(JSON.parse(storedWorkouts));
-                    }
+                    const storedUser = localStorage.getItem('user');
+                    
+                    if (storedHistory) setHistory(JSON.parse(storedHistory));
+                    if (storedWorkouts) setSavedWorkouts(JSON.parse(storedWorkouts));
+                    if (storedUser) setUser(JSON.parse(storedUser));
                 } catch (error) {
-                    console.error('Error loading data:', error);
-                    localStorage.clear(); // Clear corrupted data
+                    console.error('Error loading from localStorage:', error);
+                    // Clear corrupted data
+                    localStorage.clear();
+                } finally {
+                    setIsLoading(false);
                 }
             }, []);
 
@@ -418,6 +420,11 @@
                     return;
                 }
 
+                if (!window.confirm('Are you sure you want to finish this workout?')) {
+                    return;
+                }
+
+                // Save workout to history
                 const workoutEntry = {
                     liveWorkout: [...liveWorkout],
                     date: new Date(),
@@ -429,13 +436,13 @@
                 setHistory(newHistory);
                 localStorage.setItem('history', JSON.stringify(newHistory));
 
+                // Reset all states
                 setLiveWorkout([]);
                 setWorkoutNotes('');
                 setCurrentSet({ reps: 0, weight: 0, exertion: 0 });
                 setCurrentExercise('');
                 setTimer(0);
                 setIsResting(false);
-
                 setPage('home');
             };
 
@@ -748,12 +755,26 @@
                                             </div>
                                         </div>
                                     </div>
-                                    <button 
-                                        onClick={() => removeSet(exerciseIndex, setIndex)}
-                                        className="bg-red-500 text-white px-4 py-2 rounded mt-3 text-lg"
-                                    >
-                                        Remove Set
-                                    </button>
+                                    <div className="flex space-x-2 mt-3">
+                                        {setIndex === 0 && (
+                                            <button 
+                                                onClick={() => {
+                                                    const newWorkout = [...workout];
+                                                    newWorkout[exerciseIndex].sets = newWorkout[exerciseIndex].sets.map(s => ({...set}));
+                                                    setWorkout(newWorkout);
+                                                }}
+                                                className="bg-green-500 text-white px-4 py-2 rounded text-lg"
+                                            >
+                                                Apply to All Sets
+                                            </button>
+                                        )}
+                                        <button 
+                                            onClick={() => removeSet(exerciseIndex, setIndex)}
+                                            className="bg-red-500 text-white px-4 py-2 rounded text-lg"
+                                        >
+                                            Remove Set
+                                        </button>
+                                    </div>
                                 </div>
                             ))}
                             <button 
@@ -783,144 +804,150 @@
 
             return (
                 <div className="container mx-auto p-4">
-                    {page === 'home' && (
+                    {isLoading ? (
                         <div className="text-center p-4">
-                            <h1 className="text-4xl font-bold mb-8">GymFlow Pro</h1>
-                            <div className="flex flex-col space-y-4 max-w-xs mx-auto px-4">
-                                <button 
-                                    onClick={() => { setPage('createWorkout'); resetCreateWorkoutPage(); }} 
-                                    className="bg-blue-500 text-white px-4 py-3 rounded-lg text-lg"
-                                >
-                                    Create Your Workout
-                                </button>
-                                <button 
-                                    onClick={() => setPage('liveWorkout')} 
-                                    className="bg-green-500 text-white px-4 py-3 rounded-lg text-lg"
-                                >
-                                    Live Workout
-                                </button>
-                                <button 
-                                    onClick={() => setPage('savedWorkouts')} 
-                                    className="bg-yellow-500 text-white px-4 py-3 rounded-lg text-lg"
-                                >
-                                    Saved Workouts
-                                </button>
-                                <button 
-                                    onClick={() => setPage('history')} 
-                                    className="bg-gray-500 text-white px-4 py-3 rounded-lg text-lg"
-                                >
-                                    View History
-                                </button>
-                                <button 
-                                    onClick={() => setPage('progress')} 
-                                    className="bg-purple-500 text-white px-4 py-3 rounded-lg text-lg"
-                                >
-                                    View Progress
-                                </button>
-                                <button 
-                                    onClick={() => setPage('statistics')} 
-                                    className="bg-indigo-500 text-white px-4 py-3 rounded-lg text-lg"
-                                >
-                                    View Statistics
-                                </button>
-                            </div>
+                            <h2 className="text-xl">Loading...</h2>
                         </div>
-                    )}
+                    ) : (
+                        <>
+                            {page === 'home' && (
+                                <div className="text-center p-4">
+                                    <h1 className="text-4xl font-bold mb-8">GymFlow Pro</h1>
+                                    <div className="flex flex-col space-y-4 max-w-xs mx-auto px-4">
+                                        <button 
+                                            onClick={() => { setPage('createWorkout'); resetCreateWorkoutPage(); }} 
+                                            className="bg-blue-500 text-white px-4 py-3 rounded-lg text-lg"
+                                        >
+                                            Create Your Workout
+                                        </button>
+                                        <button 
+                                            onClick={() => setPage('liveWorkout')} 
+                                            className="bg-green-500 text-white px-4 py-3 rounded-lg text-lg"
+                                        >
+                                            Live Workout
+                                        </button>
+                                        <button 
+                                            onClick={() => setPage('savedWorkouts')} 
+                                            className="bg-yellow-500 text-white px-4 py-3 rounded-lg text-lg"
+                                        >
+                                            Saved Workouts
+                                        </button>
+                                        <button 
+                                            onClick={() => setPage('history')} 
+                                            className="bg-gray-500 text-white px-4 py-3 rounded-lg text-lg"
+                                        >
+                                            View History
+                                        </button>
+                                        <button 
+                                            onClick={() => setPage('progress')} 
+                                            className="bg-purple-500 text-white px-4 py-3 rounded-lg text-lg"
+                                        >
+                                            View Progress
+                                        </button>
+                                        <button 
+                                            onClick={() => setPage('statistics')} 
+                                            className="bg-indigo-500 text-white px-4 py-3 rounded-lg text-lg"
+                                        >
+                                            View Statistics
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
 
-                    {page === 'createWorkout' && renderWorkoutForm(saveWorkout, "Save Workout")}
+                            {page === 'createWorkout' && renderWorkoutForm(saveWorkout, "Save Workout")}
 
-                    {page === 'editWorkout' && renderWorkoutForm(updateWorkout, "Update Workout")}
+                            {page === 'editWorkout' && renderWorkoutForm(updateWorkout, "Update Workout")}
 
-                    {page === 'workout' && (
-                        <div className="text-center">
-                            <h2 className="text-3xl font-bold mb-6">Workout</h2>
-                            {workout.length > 0 && (
-                                <div className="mb-8">
-                                    <h3 className="text-5xl font-bold mb-6">{workout[currentExerciseIndex].name}</h3>
-                                    <h4 className="text-3xl font-bold mb-4">Set {currentSetIndex + 1} of {workout[currentExerciseIndex].sets.length}</h4>
-                                    <p className="text-4xl mb-4">Reps: {workout[currentExerciseIndex].sets[currentSetIndex].reps}</p>
-                                    <p className="text-4xl mb-4">Weight: {workout[currentExerciseIndex].sets[currentSetIndex].weight}</p>
-                                    <p className="text-4xl mb-4">Rest: {workout[currentExerciseIndex].sets[currentSetIndex].rest}</p>
+                            {page === 'workout' && (
+                                <div className="text-center">
+                                    <h2 className="text-3xl font-bold mb-6">Workout</h2>
+                                    {workout.length > 0 && (
+                                        <div className="mb-8">
+                                            <h3 className="text-5xl font-bold mb-6">{workout[currentExerciseIndex].name}</h3>
+                                            <h4 className="text-3xl font-bold mb-4">Set {currentSetIndex + 1} of {workout[currentExerciseIndex].sets.length}</h4>
+                                            <p className="text-4xl mb-4">Reps: {workout[currentExerciseIndex].sets[currentSetIndex].reps}</p>
+                                            <p className="text-4xl mb-4">Weight: {workout[currentExerciseIndex].sets[currentSetIndex].weight}</p>
+                                            <p className="text-4xl mb-4">Rest: {workout[currentExerciseIndex].sets[currentSetIndex].rest}</p>
+                                            {isResting ? (
+                                                <div className="mb-6">
+                                                    <h3 className="text-6xl font-bold mb-4">Rest Time: {formatTime(timer)}</h3>
+                                                    {(currentSetIndex + 1 < workout[currentExerciseIndex].sets.length) ? (
+                                                        <div className="mt-4 p-4 bg-gray-100 rounded">
+                                                            <h4 className="text-xl font-bold">Next Set:</h4>
+                                                            <p>Reps: {workout[currentExerciseIndex].sets[currentSetIndex + 1].reps}</p>
+                                                            <p>Weight: {workout[currentExerciseIndex].sets[currentSetIndex + 1].weight}</p>
+                                                        </div>
+                                                    ) : (currentExerciseIndex + 1 < workout.length) ? (
+                                                        <div className="mt-4 p-4 bg-gray-100 rounded">
+                                                            <h4 className="text-xl font-bold">Next Exercise:</h4>
+                                                            <p>{workout[currentExerciseIndex + 1].name}</p>
+                                                            <p>Reps: {workout[currentExerciseIndex + 1].sets[0].reps}</p>
+                                                            <p>Weight: {workout[currentExerciseIndex + 1].sets[0].weight}</p>
+                                                        </div>
+                                                    ) : null}
+                                                    <button onClick={nextSet} className="bg-green-500 text-white px-6 py-3 rounded text-xl mt-4">Next Set</button>
+                                                </div>
+                                            ) : (
+                                                <button 
+                                                    onClick={completeSet} 
+                                                    className="bg-blue-500 text-white px-8 py-4 rounded text-2xl"
+                                                >
+                                                    Complete Set
+                                                </button>
+                                            )}
+                                        </div>
+                                    )}
+                                    <button onClick={finishWorkout} className="bg-red-500 text-white px-6 py-3 rounded text-xl">Finish Workout</button>
+                                    <div className="mt-4">
+                                        <textarea
+                                            value={workoutNotes}
+                                            onChange={(e) => setWorkoutNotes(e.target.value)}
+                                            placeholder="Add workout notes..."
+                                            className="w-full p-2 border rounded"
+                                            rows="4"
+                                        />
+                                    </div>
+                                </div>
+                            )}
+
+                            {page === 'liveWorkout' && (
+                                <div>
+                                    <h2 className="text-2xl font-bold mb-4">Live Workout</h2>
+                                    <div className="mb-4">
+                                        <label className="block mb-2">Select Exercise</label>
+                                        <select value={currentExercise} onChange={(e) => setCurrentExercise(e.target.value)} className="border p-2 rounded w-full">
+                                            <option value="">-- Select Exercise --</option>
+                                            {exercisesList.map((exercise, index) => (
+                                                <option key={index} value={exercise}>{exercise}</option>
+                                            ))}
+                                        </select>
+                                        <input type="text" placeholder="Or enter custom exercise" className="border p-2 rounded w-full mt-2" value={currentExercise} onChange={(e) => setCurrentExercise(e.target.value)} />
+                                    </div>
+                                    <div className="mb-4">
+                                        <h3 className="font-bold">{currentExercise}</h3>
+                                        <div className="grid grid-cols-3 gap-4">
+                                            <div>
+                                                <label className="block mb-1">Reps</label>
+                                                <input type="number" placeholder="Reps" value={currentSet.reps} onChange={(e) => setCurrentSet({ ...currentSet, reps: e.target.value })} className="border p-2 rounded w-full" />
+                                            </div>
+                                            <div>
+                                                <label className="block mb-1">Weight</label>
+                                                <input type="number" placeholder="Weight" value={currentSet.weight} onChange={(e) => setCurrentSet({ ...currentSet, weight: e.target.value })} className="border p-2 rounded w-full" />
+                                            </div>
+                                            <div>
+                                                <label className="block mb-1">Exertion (1-10)</label>
+                                                <input type="number" min="1" max="10" placeholder="Exertion" value={currentSet.exertion} onChange={(e) => setCurrentSet({ ...currentSet, exertion: Math.min(10, Math.max(1, parseInt(e.target.value) || 0)) })} className="border p-2 rounded w-full" />
+                                            </div>
+                                        </div>
+                                    </div>
                                     {isResting ? (
-                                        <div className="mb-6">
-                                            <h3 className="text-6xl font-bold mb-4">Rest Time: {formatTime(timer)}</h3>
-                                            {(currentSetIndex + 1 < workout[currentExerciseIndex].sets.length) ? (
-                                                <div className="mt-4 p-4 bg-gray-100 rounded">
-                                                    <h4 className="text-xl font-bold">Next Set:</h4>
-                                                    <p>Reps: {workout[currentExerciseIndex].sets[currentSetIndex + 1].reps}</p>
-                                                    <p>Weight: {workout[currentExerciseIndex].sets[currentSetIndex + 1].weight}</p>
-                                                </div>
-                                            ) : (currentExerciseIndex + 1 < workout.length) ? (
-                                                <div className="mt-4 p-4 bg-gray-100 rounded">
-                                                    <h4 className="text-xl font-bold">Next Exercise:</h4>
-                                                    <p>{workout[currentExerciseIndex + 1].name}</p>
-                                                    <p>Reps: {workout[currentExerciseIndex + 1].sets[0].reps}</p>
-                                                    <p>Weight: {workout[currentExerciseIndex + 1].sets[0].weight}</p>
-                                                </div>
-                                            ) : null}
-                                            <button onClick={nextSet} className="bg-green-500 text-white px-6 py-3 rounded text-xl mt-4">Next Set</button>
+                                        <div className="text-center mb-4">
+                                            <h3 className="text-4xl font-bold">Rest Timer: {formatTime(timer)}</h3>
+                                            <button onClick={restDone} className="bg-green-500 text-white px-4 py-2 rounded mt-2">Rest Done</button>
                                         </div>
                                     ) : (
-                                        <button 
-                                            onClick={completeSet} 
-                                            className="bg-blue-500 text-white px-8 py-4 rounded text-2xl"
-                                        >
-                                            Complete Set
-                                        </button>
+                                        <button onClick={completeLiveSet} className="bg-blue-500 text-white px-4 py-2 rounded">Complete Set</button>
                                     )}
-                                </div>
-                            )}
-                            <button onClick={finishWorkout} className="bg-red-500 text-white px-6 py-3 rounded text-xl">Finish Workout</button>
-                            <div className="mt-4">
-                                <textarea
-                                    value={workoutNotes}
-                                    onChange={(e) => setWorkoutNotes(e.target.value)}
-                                    placeholder="Add workout notes..."
-                                    className="w-full p-2 border rounded"
-                                    rows="4"
-                                />
-                            </div>
-                        </div>
-                    )}
-
-                    {page === 'liveWorkout' && (
-                        <div>
-                            <h2 className="text-2xl font-bold mb-4">Live Workout</h2>
-                            <div className="mb-4">
-                                <label className="block mb-2">Select Exercise</label>
-                                <select value={currentExercise} onChange={(e) => setCurrentExercise(e.target.value)} className="border p-2 rounded w-full">
-                                    <option value="">-- Select Exercise --</option>
-                                    {exercisesList.map((exercise, index) => (
-                                        <option key={index} value={exercise}>{exercise}</option>
-                                    ))}
-                                </select>
-                                <input type="text" placeholder="Or enter custom exercise" className="border p-2 rounded w-full mt-2" value={currentExercise} onChange={(e) => setCurrentExercise(e.target.value)} />
-                            </div>
-                            <div className="mb-4">
-                                <h3 className="font-bold">{currentExercise}</h3>
-                                <div className="grid grid-cols-3 gap-4">
-                                    <div>
-                                        <label className="block mb-1">Reps</label>
-                                        <input type="number" placeholder="Reps" value={currentSet.reps} onChange={(e) => setCurrentSet({ ...currentSet, reps: e.target.value })} className="border p-2 rounded w-full" />
-                                    </div>
-                                    <div>
-                                        <label className="block mb-1">Weight</label>
-                                        <input type="number" placeholder="Weight" value={currentSet.weight} onChange={(e) => setCurrentSet({ ...currentSet, weight: e.target.value })} className="border p-2 rounded w-full" />
-                                    </div>
-                                    <div>
-                                        <label className="block mb-1">Exertion (1-10)</label>
-                                        <input type="number" min="1" max="10" placeholder="Exertion" value={currentSet.exertion} onChange={(e) => setCurrentSet({ ...currentSet, exertion: Math.min(10, Math.max(1, parseInt(e.target.value) || 0)) })} className="border p-2 rounded w-full" />
-                                    </div>
-                                </div>
-                            </div>
-                            {isResting ? (
-                                <div className="text-center mb-4">
-                                    <h3 className="text-4xl font-bold">Rest Timer: {formatTime(timer)}</h3>
-                                    <button onClick={restDone} className="bg-green-500 text-white px-4 py-2 rounded mt-2">Rest Done</button>
-                                </div>
-                            ) : (
-                                <button onClick={completeLiveSet} className="bg-blue-500 text-white px-4 py-2 rounded">Complete Set</button>
-                            )}
                             <div className="mt-4">
                                 <textarea
                                     value={workoutNotes}
@@ -1053,7 +1080,44 @@
             );
         };
 
-        ReactDOM.render(<App />, document.getElementById('root'));
+        class ErrorBoundary extends React.Component {
+            constructor(props) {
+                super(props);
+                this.state = { hasError: false };
+            }
+
+            static getDerivedStateFromError(error) {
+                return { hasError: true };
+            }
+
+            componentDidCatch(error, errorInfo) {
+                console.error('Error caught by boundary:', error, errorInfo);
+            }
+
+            render() {
+                if (this.state.hasError) {
+                    return (
+                        <div className="text-center p-4">
+                            <h1 className="text-2xl font-bold text-red-500">Something went wrong</h1>
+                            <button 
+                                onClick={() => window.location.reload()} 
+                                className="bg-blue-500 text-white px-4 py-2 rounded mt-4"
+                            >
+                                Reload App
+                            </button>
+                        </div>
+                    );
+                }
+                return this.props.children;
+            }
+        }
+
+        ReactDOM.render(
+            <ErrorBoundary>
+                <App />
+            </ErrorBoundary>, 
+            document.getElementById('root')
+        );
     </script>
 </body>
 </html> 
