@@ -50,16 +50,23 @@
                 if (page === 'workout' && isResting && timer > 0) {
                     interval = setInterval(() => {
                         setTimer(prevTime => {
-                            if (prevTime > 0) {
-                                // Play sounds at specific times
-                                if (prevTime <= 3) {
+                            if (prevTime <= 3 && prevTime > 0) {
+                                try {
                                     playSound('countdown');
                                     vibrateDevice();
+                                } catch (error) {
+                                    console.error('Sound play failed:', error);
                                 }
+                            }
+                            if (prevTime > 0) {
                                 return prevTime - 1;
                             } else {
-                                playSound('timerComplete');
-                                vibrateDevice();
+                                try {
+                                    playSound('timerComplete');
+                                    vibrateDevice();
+                                } catch (error) {
+                                    console.error('Sound play failed:', error);
+                                }
                                 setIsResting(false);
                                 return 0;
                             }
@@ -69,10 +76,13 @@
                     interval = setInterval(() => {
                         setTimer(prevTime => {
                             const newTime = prevTime + 1;
-                            // Optional: Play sound at specific intervals (e.g., every minute)
                             if (newTime % 60 === 0) {
-                                playSound('countdown');
-                                vibrateDevice();
+                                try {
+                                    playSound('countdown');
+                                    vibrateDevice();
+                                } catch (error) {
+                                    console.error('Sound play failed:', error);
+                                }
                             }
                             return newTime;
                         });
@@ -137,38 +147,18 @@
 
             useEffect(() => {
                 try {
-                    const storedUser = localStorage.getItem('user');
-                    if (storedUser) {
-                        const user = JSON.parse(storedUser);
-                        setUser(user);
-                        
-                        try {
-                            const storedHistory = localStorage.getItem(`history_${user.username}`);
-                            if (storedHistory) {
-                                const parsedHistory = JSON.parse(storedHistory);
-                                // Validate history entries
-                                const validHistory = parsedHistory.filter(entry => 
-                                    entry && entry.date && 
-                                    (
-                                        (entry.workout && Array.isArray(entry.workout)) || 
-                                        (entry.liveWorkout && Array.isArray(entry.liveWorkout))
-                                    )
-                                );
-                                setHistory(validHistory);
-                            }
-                            
-                            const storedWorkouts = localStorage.getItem(`savedWorkouts_${user.username}`);
-                            if (storedWorkouts) {
-                                setSavedWorkouts(JSON.parse(storedWorkouts));
-                            }
-                        } catch (error) {
-                            console.error('Error loading data:', error);
-                            clearLocalStorage(); // Clear corrupted data
-                        }
+                    const storedHistory = localStorage.getItem('history');
+                    if (storedHistory) {
+                        setHistory(JSON.parse(storedHistory));
+                    }
+                    
+                    const storedWorkouts = localStorage.getItem('savedWorkouts');
+                    if (storedWorkouts) {
+                        setSavedWorkouts(JSON.parse(storedWorkouts));
                     }
                 } catch (error) {
-                    console.error('Error loading user:', error);
-                    localStorage.clear(); // Clear all data if user data is corrupted
+                    console.error('Error loading data:', error);
+                    localStorage.clear(); // Clear corrupted data
                 }
             }, []);
 
@@ -313,25 +303,21 @@
             };
 
             const finishWorkout = () => {
-                if (user) {
-                    playSound('workoutComplete');
-                    const newHistory = [...history, { 
-                        workout, 
-                        date: new Date(),
-                        notes: workoutNotes,
-                        volume: calculateTotalVolume({ workout })
-                    }];
-                    setHistory(newHistory);
-                    localStorage.setItem(`history_${user.username}`, JSON.stringify(newHistory));
-                    setWorkoutNotes('');
-                    setPage('home');
-                    resetCreateWorkoutPage();
-                    setCurrentExerciseIndex(0);
-                    setCurrentSetIndex(0);
-                    updateStatistics();
-                } else {
-                    alert('Please log in to save workout history');
-                }
+                playSound('workoutComplete');
+                const newHistory = [...history, { 
+                    workout, 
+                    date: new Date(),
+                    notes: workoutNotes,
+                    volume: calculateTotalVolume({ workout })
+                }];
+                setHistory(newHistory);
+                localStorage.setItem('history', JSON.stringify(newHistory));
+                setWorkoutNotes('');
+                setPage('home');
+                resetCreateWorkoutPage();
+                setCurrentExerciseIndex(0);
+                setCurrentSetIndex(0);
+                updateStatistics();
             };
 
             const startLiveWorkout = () => {
@@ -390,33 +376,23 @@
             };
 
             const finishLiveWorkout = () => {
-                if (!user) {
-                    alert('Please log in to save workout history');
-                    return;
-                }
-                
                 if (liveWorkout.length === 0) {
                     alert('No exercises recorded');
                     return;
                 }
 
                 playSound('workoutComplete');
-                // Create workout entry
                 const workoutEntry = {
-                    liveWorkout: [...liveWorkout], // Create a copy of the workout data
+                    liveWorkout: [...liveWorkout],
                     date: new Date(),
                     notes: workoutNotes,
                     volume: calculateTotalVolume({ liveWorkout })
                 };
 
-                // Update history
                 const newHistory = [...history, workoutEntry];
                 setHistory(newHistory);
-                
-                // Save to localStorage
-                localStorage.setItem(`history_${user.username}`, JSON.stringify(newHistory));
+                localStorage.setItem('history', JSON.stringify(newHistory));
 
-                // Reset all states
                 setLiveWorkout([]);
                 setWorkoutNotes('');
                 setCurrentSet({ reps: 0, weight: 0, exertion: 0 });
@@ -424,7 +400,6 @@
                 setTimer(0);
                 setIsResting(false);
 
-                // Navigate home
                 setPage('home');
             };
 
@@ -749,6 +724,13 @@
                     navigator.vibrate(200);
                 }
             };
+
+            useEffect(() => {
+                // Preload sounds
+                Object.values(sounds).forEach(sound => {
+                    sound.load();
+                });
+            }, []);
 
             return (
                 <div className="container mx-auto p-4">
