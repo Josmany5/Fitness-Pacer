@@ -79,27 +79,18 @@
                 }
             };
 
-            const handleNumberChange = (e) => {
-                const value = e.target.value;
-                if (value === '' || parseInt(value) > 0) {
-                    setNumberOfSets(value === '' ? '' : parseInt(value));
-                }
-            };
-
             return (
                 <div className="mb-4 flex items-center space-x-2">
                     <input 
                         type="number" 
                         value={numberOfSets}
-                        onChange={handleNumberChange}
+                        onChange={(e) => setNumberOfSets(Math.max(1, parseInt(e.target.value) || 1))}
                         className="border p-2 rounded w-24 text-lg"
                         min="1"
-                        placeholder="1"
                     />
                     <button 
                         onClick={handleAddSets}
                         className="bg-blue-500 text-white px-4 py-2 rounded text-lg"
-                        disabled={!numberOfSets || numberOfSets < 1}
                     >
                         Add Sets
                     </button>
@@ -633,7 +624,7 @@
             const updateStatistics = () => {
                 const stats = {
                     totalWorkouts: history.length,
-                    totalVolume: history.reduce((total, entry) => total + (entry.volume || calculateTotalVolume(entry)), 0), 0),
+                    totalVolume: history.reduce((total, entry) => total + (entry.volume || calculateTotalVolume(entry)), 0),
                     personalBests: calculatePersonalBests(),
                     frequentExercises: getMostFrequentExercises()
                 };
