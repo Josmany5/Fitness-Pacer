@@ -51,12 +51,14 @@
                     interval = setInterval(() => {
                         setTimer(prevTime => {
                             if (prevTime <= 3 && prevTime > 0) {
-                                try {
-                                    playSound('countdown');
-                                    vibrateDevice();
-                                } catch (error) {
-                                    console.error('Sound play failed:', error);
-                                }
+                                console.log('Playing countdown sound at', prevTime);
+                                playSound('countdown');
+                                vibrateDevice();
+                            }
+                            if (prevTime === 0) {
+                                console.log('Playing timer complete sound');
+                                playSound('timerComplete');
+                                vibrateDevice();
                             }
                             if (prevTime > 0) {
                                 return prevTime - 1;
@@ -703,19 +705,63 @@
                 </div>
             );
 
-            // Replace the existing sound functions with this:
+            // Update the sounds object with direct MP3 files
             const sounds = {
-                timerComplete: new Audio('https://assets.mixkit.co/sfx/preview/mixkit-achievement-bell-600.mp3'),
-                countdown: new Audio('https://assets.mixkit.co/sfx/preview/mixkit-simple-countdown-922.mp3'),
-                restStart: new Audio('https://assets.mixkit.co/sfx/preview/mixkit-start-match-countdown-1954.mp3'),
-                setComplete: new Audio('https://assets.mixkit.co/sfx/preview/mixkit-positive-interface-beep-221.mp3'),
-                workoutComplete: new Audio('https://assets.mixkit.co/sfx/preview/mixkit-winning-chimes-2015.mp3')
+                timerComplete: new Audio('https://cdn.pixabay.com/download/audio/2022/03/24/audio_c8c8a73467.mp3?filename=correct-2-46134.mp3'),
+                countdown: new Audio('https://cdn.pixabay.com/download/audio/2021/08/04/audio_0625c6a442.mp3?filename=beep-sound-8333.mp3'),
+                restStart: new Audio('https://cdn.pixabay.com/download/audio/2021/08/04/audio_12b0c7443c.mp3?filename=ping-82822.mp3'),
+                setComplete: new Audio('https://cdn.pixabay.com/download/audio/2021/08/04/audio_c8c8a73467.mp3?filename=correct-6033.mp3'),
+                workoutComplete: new Audio('https://cdn.pixabay.com/download/audio/2021/08/04/audio_88447e252d.mp3?filename=success-1-6297.mp3')
             };
 
-            // Update the sound functions
+            // Add this debug code to check if sounds are loading
+            useEffect(() => {
+                // Preload sounds and add error handling
+                Object.entries(sounds).forEach(([name, sound]) => {
+                    sound.addEventListener('error', (e) => {
+                        console.error(`Error loading sound ${name}:`, e);
+                    });
+                    sound.addEventListener('canplaythrough', () => {
+                        console.log(`Sound ${name} loaded successfully`);
+                    });
+                    sound.load();
+                });
+            }, []);
+
+            // Update the playSound function with better error handling
             const playSound = (soundType) => {
-                if (soundEnabled) {
-                    sounds[soundType].play().catch(e => console.log('Audio play failed:', e));
+                try {
+                    const sound = sounds[soundType];
+                    if (sound) {
+                        // Reset the sound to start
+                        sound.currentTime = 0;
+                        
+                        // Log attempt to play sound
+                        console.log(`Attempting to play ${soundType} sound`);
+                        
+                        // Play the sound with promise handling
+                        const playPromise = sound.play();
+                        
+                        if (playPromise !== undefined) {
+                            playPromise
+                                .then(() => {
+                                    console.log(`Successfully playing ${soundType} sound`);
+                                })
+                                .catch(error => {
+                                    console.error(`Error playing ${soundType} sound:`, error);
+                                    // Try to play again after user interaction
+                                    const retryPlay = () => {
+                                        sound.play()
+                                            .then(() => document.removeEventListener('click', retryPlay));
+                                    };
+                                    document.addEventListener('click', retryPlay, { once: true });
+                                });
+                        }
+                    } else {
+                        console.error(`Sound ${soundType} not found`);
+                    }
+                } catch (error) {
+                    console.error('Error in playSound:', error);
                 }
             };
 
@@ -724,13 +770,6 @@
                     navigator.vibrate(200);
                 }
             };
-
-            useEffect(() => {
-                // Preload sounds
-                Object.values(sounds).forEach(sound => {
-                    sound.load();
-                });
-            }, []);
 
             return (
                 <div className="container mx-auto p-4">
@@ -773,6 +812,20 @@
                                     className="bg-indigo-500 text-white px-4 py-3 rounded-lg text-lg"
                                 >
                                     View Statistics
+                                </button>
+                                <button 
+                                    onClick={() => {
+                                        console.log('Testing sounds...');
+                                        Object.keys(sounds).forEach((soundType, index) => {
+                                            setTimeout(() => {
+                                                console.log(`Testing ${soundType} sound`);
+                                                playSound(soundType);
+                                            }, index * 1000);
+                                        });
+                                    }}
+                                    className="bg-blue-500 text-white px-4 py-2 rounded mb-4"
+                                >
+                                    Test All Sounds
                                 </button>
                             </div>
                         </div>
