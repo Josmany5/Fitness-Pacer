@@ -53,12 +53,12 @@
                             if (prevTime > 0) {
                                 // Play sounds at specific times
                                 if (prevTime <= 3) {
-                                    playCountdown();
+                                    playSound('countdown');
                                     vibrateDevice();
                                 }
                                 return prevTime - 1;
                             } else {
-                                playTimerSound();
+                                playSound('timerComplete');
                                 vibrateDevice();
                                 setIsResting(false);
                                 return 0;
@@ -71,7 +71,7 @@
                             const newTime = prevTime + 1;
                             // Optional: Play sound at specific intervals (e.g., every minute)
                             if (newTime % 60 === 0) {
-                                playTimerSound();
+                                playSound('countdown');
                                 vibrateDevice();
                             }
                             return newTime;
@@ -130,6 +130,7 @@
                 personalBests: {},
                 frequentExercises: {}
             });
+            const [soundEnabled, setSoundEnabled] = useState(true);
 
             // Use the custom timer hook
             useTimer(page, isResting, timer, setTimer, setIsResting);
@@ -287,11 +288,13 @@
             };
 
             const completeSet = () => {
+                playSound('setComplete');
                 const currentExercise = workout[currentExerciseIndex];
                 const currentSet = currentExercise.sets[currentSetIndex];
                 const restTimeInSeconds = parseTime(currentSet.rest);
                 setTimer(restTimeInSeconds);
                 setIsResting(true);
+                playSound('restStart');
             };
 
             const nextSet = () => {
@@ -311,6 +314,7 @@
 
             const finishWorkout = () => {
                 if (user) {
+                    playSound('workoutComplete');
                     const newHistory = [...history, { 
                         workout, 
                         date: new Date(),
@@ -396,6 +400,7 @@
                     return;
                 }
 
+                playSound('workoutComplete');
                 // Create workout entry
                 const workoutEntry = {
                     liveWorkout: [...liveWorkout], // Create a copy of the workout data
@@ -640,7 +645,7 @@
             const updateStatistics = () => {
                 const stats = {
                     totalWorkouts: history.length,
-                    totalVolume: history.reduce((total, entry) => total + (entry.volume || calculateTotalVolume(entry)), 0),
+                    totalVolume: history.reduce((total, entry) => total + (entry.volume || calculateTotalVolume(entry)), 0), 0),
                     personalBests: calculatePersonalBests(),
                     frequentExercises: getMostFrequentExercises()
                 };
@@ -723,22 +728,26 @@
                 </div>
             );
 
-            // Add these functions near the top of the App component
-            const playTimerSound = () => {
-                const audio = new Audio('data:audio/wav;base64,//uQRAAAAWMSLwUIYAAsYkXgoQwAEaYLWfkWgAI0wWs/ItAAAGDgYtAgAyN+QWaAAihwMWm4G8QQRDiMcCBcH3Bt8Qjw4AZwBgA7yCFULDQLRE5CgwAGIwZ3cEKLYBy6VQqACZSWJAPAWLwBSFryq4qpAxUIARUAAAAAArQAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA8AEQgCGl8AAEQgAAAAAAAIAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABGRlRNAAAAAAAAAB4AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB0ZXh0AAAAAENvcHlyaWdodCAoYykgMjAwMCBieSBTdW4gTWljcm9zeXN0ZW1zLCBJbmMuIEFsbCBSaWdodHMgUmVzZXJ2ZWQuAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAAABJRU5ErkJggg==');
-                audio.play().catch(e => console.log('Audio play failed:', e));
+            // Replace the existing sound functions with this:
+            const sounds = {
+                timerComplete: new Audio('https://assets.mixkit.co/sfx/preview/mixkit-achievement-bell-600.mp3'),
+                countdown: new Audio('https://assets.mixkit.co/sfx/preview/mixkit-simple-countdown-922.mp3'),
+                restStart: new Audio('https://assets.mixkit.co/sfx/preview/mixkit-start-match-countdown-1954.mp3'),
+                setComplete: new Audio('https://assets.mixkit.co/sfx/preview/mixkit-positive-interface-beep-221.mp3'),
+                workoutComplete: new Audio('https://assets.mixkit.co/sfx/preview/mixkit-winning-chimes-2015.mp3')
+            };
+
+            // Update the sound functions
+            const playSound = (soundType) => {
+                if (soundEnabled) {
+                    sounds[soundType].play().catch(e => console.log('Audio play failed:', e));
+                }
             };
 
             const vibrateDevice = () => {
                 if (navigator.vibrate) {
                     navigator.vibrate(200);
                 }
-            };
-
-            // Add countdown function
-            const playCountdown = () => {
-                const countdownBeep = new Audio('data:audio/wav;base64,//uQRAAAAWMSLwUIYAAsYkXgoQwAEaYLWfkWgAI0wWs/ItAAAGDgYtAgAyN+QWaAAihwMWm4G8QQRDiMcCBcH3Bt8Qjw4AZwBgA7yCFULDQLRE5CgwAGIwZ3cEKLYBy6VQqACZSWJAPAWLwBSFryq4qpAxUIARUAAAAAArQAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA8AEQgCGl8AAEQgAAAAAAAIAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABGRlRNAAAAAAAAAB4AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB0ZXh0AAAAAENvcHlyaWdodCAoYykgMjAwMCBieSBTdW4gTWljcm9zeXN0ZW1zLCBJbmMuIEFsbCBSaWdodHMgUmVzZXJ2ZWQuAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAAABJRU5ErkJggg==');
-                countdownBeep.play().catch(e => console.log('Countdown play failed:', e));
             };
 
             return (
@@ -1004,6 +1013,13 @@
                             </button>
                         </div>
                     )}
+
+                    <button 
+                        onClick={() => setSoundEnabled(!soundEnabled)} 
+                        className="bg-gray-500 text-white px-4 py-2 rounded"
+                    >
+                        {soundEnabled ? 'Mute Sounds' : 'Enable Sounds'}
+                    </button>
                 </div>
             );
         };
