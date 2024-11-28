@@ -249,7 +249,6 @@
                         const newSets = exercise.sets.map((set, i) => {
                             if (i === setIndex) {
                                 if (field === 'rest') {
-                                    // Ensure rest time is within valid range (0-59:59)
                                     const [min, sec] = value.split(':').map(Number);
                                     const validMin = Math.min(Math.max(0, min || 0), 59);
                                     const validSec = Math.min(Math.max(0, sec || 0), 59);
@@ -634,7 +633,7 @@
             const updateStatistics = () => {
                 const stats = {
                     totalWorkouts: history.length,
-                    totalVolume: history.reduce((total, entry) => total + (entry.volume || calculateTotalVolume(entry)), 0),
+                    totalVolume: history.reduce((total, entry) => total + (entry.volume || calculateTotalVolume(entry)), 0), 0),
                     personalBests: calculatePersonalBests(),
                     frequentExercises: getMostFrequentExercises()
                 };
