@@ -108,6 +108,13 @@
             const [username, setUsername] = useState('');
             const [password, setPassword] = useState('');
             const [progressData, setProgressData] = useState({});
+            const [workoutNotes, setWorkoutNotes] = useState('');
+            const [statistics, setStatistics] = useState({
+                totalWorkouts: 0,
+                totalVolume: 0,
+                personalBests: {},
+                frequentExercises: {}
+            });
 
             // Use the custom timer hook
             useTimer(page, isResting, timer, setTimer, setIsResting);
@@ -273,13 +280,20 @@
 
             const finishWorkout = () => {
                 if (user) {
-                    const newHistory = [...history, { workout, date: new Date() }];
+                    const newHistory = [...history, { 
+                        workout, 
+                        date: new Date(),
+                        notes: workoutNotes,
+                        volume: calculateTotalVolume({ workout })
+                    }];
                     setHistory(newHistory);
                     localStorage.setItem(`history_${user.username}`, JSON.stringify(newHistory));
+                    setWorkoutNotes('');
                     setPage('home');
                     resetCreateWorkoutPage();
                     setCurrentExerciseIndex(0);
                     setCurrentSetIndex(0);
+                    updateStatistics();
                 } else {
                     alert('Please log in to save workout history');
                 }
@@ -489,6 +503,79 @@
                 }
             }, [page, progressData]);
 
+            const calculateTotalVolume = (workoutData) => {
+                let volume = 0;
+                if (workoutData.workout) {
+                    workoutData.workout.forEach(exercise => {
+                        exercise.sets.forEach(set => {
+                            volume += (parseInt(set.reps) || 0) * (parseInt(set.weight) || 0);
+                        });
+                    });
+                } else if (workoutData.liveWorkout) {
+                    workoutData.liveWorkout.forEach(exercise => {
+                        const reps = exercise.reps.split(',').map(r => parseInt(r) || 0);
+                        const weights = exercise.weight.split(',').map(w => parseInt(w) || 0);
+                        reps.forEach((rep, i) => {
+                            volume += rep * (weights[i] || 0);
+                        });
+                    });
+                }
+                return volume;
+            };
+
+            const calculatePersonalBests = () => {
+                const pbs = {};
+                history.forEach(entry => {
+                    if (entry.workout) {
+                        entry.workout.forEach(exercise => {
+                            const maxWeight = Math.max(...exercise.sets.map(set => parseInt(set.weight) || 0));
+                            if (!pbs[exercise.name] || maxWeight > pbs[exercise.name]) {
+                                pbs[exercise.name] = maxWeight;
+                            }
+                        });
+                    } else if (entry.liveWorkout) {
+                        entry.liveWorkout.forEach(exercise => {
+                            const weights = exercise.weight.split(',').map(w => parseInt(w) || 0);
+                            const maxWeight = Math.max(...weights);
+                            if (!pbs[exercise.exercise] || maxWeight > pbs[exercise.exercise]) {
+                                pbs[exercise.exercise] = maxWeight;
+                            }
+                        });
+                    }
+                });
+                return pbs;
+            };
+
+            const getMostFrequentExercises = () => {
+                const frequency = {};
+                history.forEach(entry => {
+                    if (entry.workout) {
+                        entry.workout.forEach(exercise => {
+                            frequency[exercise.name] = (frequency[exercise.name] || 0) + 1;
+                        });
+                    } else if (entry.liveWorkout) {
+                        entry.liveWorkout.forEach(exercise => {
+                            frequency[exercise.exercise] = (frequency[exercise.exercise] || 0) + 1;
+                        });
+                    }
+                });
+                return frequency;
+            };
+
+            const updateStatistics = () => {
+                const stats = {
+                    totalWorkouts: history.length,
+                    totalVolume: history.reduce((total, entry) => total + (entry.volume || calculateTotalVolume(entry)), 0),
+                    personalBests: calculatePersonalBests(),
+                    frequentExercises: getMostFrequentExercises()
+                };
+                setStatistics(stats);
+            };
+
+            useEffect(() => {
+                updateStatistics();
+            }, [history]);
+
             const renderWorkoutForm = (onSubmit, submitButtonText) => (
                 <div>
                     <h2 className="text-2xl font-bold mb-4">{submitButtonText === "Save Workout" ? "Create" : "Edit"} Your Workout</h2>
@@ -583,6 +670,12 @@
                                     <button onClick={() => setPage('savedWorkouts')} className="bg-yellow-500 text-white px-4 py-2 rounded m-2">Saved Workouts</button>
                                     <button onClick={() => setPage('progress')} className="bg-purple-500 text-white px-4 py-2 rounded m-2">View Progress</button>
                                     <button onClick={handleLogout} className="bg-red-500 text-white px-4 py-2 rounded m-2">Logout</button>
+                                    <button 
+                                        onClick={() => setPage('statistics')} 
+                                        className="bg-indigo-500 text-white px-4 py-2 rounded m-2"
+                                    >
+                                        View Statistics
+                                    </button>
                                 </div>
                             )}
                         </div>
@@ -627,6 +720,15 @@
                                 </div>
                             )}
                             <button onClick={finishWorkout} className="bg-red-500 text-white px-6 py-3 rounded text-xl">Finish Workout</button>
+                            <div className="mt-4">
+                                <textarea
+                                    value={workoutNotes}
+                                    onChange={(e) => setWorkoutNotes(e.target.value)}
+                                    placeholder="Add workout notes..."
+                                    className="w-full p-2 border rounded"
+                                    rows="4"
+                                />
+                            </div>
                         </div>
                     )}
 
@@ -734,6 +836,36 @@
                                         </div>
                                     </div>
                                 ))}
+                            </div>
+                            <button onClick={() => setPage('home')} className="bg-gray-500 text-white px-4 py-2 rounded mt-4">
+                                Back to Menu
+                            </button>
+                        </div>
+                    )}
+
+                    {page === 'statistics' && (
+                        <div className="p-4">
+                            <h2 className="text-2xl font-bold mb-4">Workout Statistics</h2>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="bg-white p-4 rounded shadow">
+                                    <h3 className="text-xl font-bold mb-2">Overview</h3>
+                                    <p>Total Workouts: {statistics.totalWorkouts}</p>
+                                    <p>Total Volume: {statistics.totalVolume.toLocaleString()} lbs</p>
+                                </div>
+                                <div className="bg-white p-4 rounded shadow">
+                                    <h3 className="text-xl font-bold mb-2">Personal Bests</h3>
+                                    {Object.entries(statistics.personalBests).map(([exercise, weight]) => (
+                                        <p key={exercise}>{exercise}: {weight} lbs</p>
+                                    ))}
+                                </div>
+                                <div className="bg-white p-4 rounded shadow">
+                                    <h3 className="text-xl font-bold mb-2">Most Frequent Exercises</h3>
+                                    {Object.entries(statistics.frequentExercises)
+                                        .sort(([,a], [,b]) => b - a)
+                                        .map(([exercise, count]) => (
+                                            <p key={exercise}>{exercise}: {count} times</p>
+                                        ))}
+                                </div>
                             </div>
                             <button onClick={() => setPage('home')} className="bg-gray-500 text-white px-4 py-2 rounded mt-4">
                                 Back to Menu
