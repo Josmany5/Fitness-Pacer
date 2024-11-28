@@ -51,8 +51,15 @@
                     interval = setInterval(() => {
                         setTimer(prevTime => {
                             if (prevTime > 0) {
+                                // Play sounds at specific times
+                                if (prevTime <= 3) {
+                                    playCountdown();
+                                    vibrateDevice();
+                                }
                                 return prevTime - 1;
                             } else {
+                                playTimerSound();
+                                vibrateDevice();
                                 setIsResting(false);
                                 return 0;
                             }
@@ -60,7 +67,15 @@
                     }, 1000);
                 } else if (page === 'liveWorkout' && isResting) {
                     interval = setInterval(() => {
-                        setTimer(prevTime => prevTime + 1);
+                        setTimer(prevTime => {
+                            const newTime = prevTime + 1;
+                            // Optional: Play sound at specific intervals (e.g., every minute)
+                            if (newTime % 60 === 0) {
+                                playTimerSound();
+                                vibrateDevice();
+                            }
+                            return newTime;
+                        });
                     }, 1000);
                 }
                 return () => clearInterval(interval);
@@ -707,6 +722,24 @@
                     <button onClick={() => setPage('home')} className="bg-gray-500 text-white px-4 py-2 rounded">Back to Menu</button>
                 </div>
             );
+
+            // Add these functions near the top of the App component
+            const playTimerSound = () => {
+                const audio = new Audio('data:audio/wav;base64,//uQRAAAAWMSLwUIYAAsYkXgoQwAEaYLWfkWgAI0wWs/ItAAAGDgYtAgAyN+QWaAAihwMWm4G8QQRDiMcCBcH3Bt8Qjw4AZwBgA7yCFULDQLRE5CgwAGIwZ3cEKLYBy6VQqACZSWJAPAWLwBSFryq4qpAxUIARUAAAAAArQAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA8AEQgCGl8AAEQgAAAAAAAIAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABGRlRNAAAAAAAAAB4AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB0ZXh0AAAAAENvcHlyaWdodCAoYykgMjAwMCBieSBTdW4gTWljcm9zeXN0ZW1zLCBJbmMuIEFsbCBSaWdodHMgUmVzZXJ2ZWQuAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAAABJRU5ErkJggg==');
+                audio.play().catch(e => console.log('Audio play failed:', e));
+            };
+
+            const vibrateDevice = () => {
+                if (navigator.vibrate) {
+                    navigator.vibrate(200);
+                }
+            };
+
+            // Add countdown function
+            const playCountdown = () => {
+                const countdownBeep = new Audio('data:audio/wav;base64,//uQRAAAAWMSLwUIYAAsYkXgoQwAEaYLWfkWgAI0wWs/ItAAAGDgYtAgAyN+QWaAAihwMWm4G8QQRDiMcCBcH3Bt8Qjw4AZwBgA7yCFULDQLRE5CgwAGIwZ3cEKLYBy6VQqACZSWJAPAWLwBSFryq4qpAxUIARUAAAAAArQAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA8AEQgCGl8AAEQgAAAAAAAIAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABGRlRNAAAAAAAAAB4AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB0ZXh0AAAAAENvcHlyaWdodCAoYykgMjAwMCBieSBTdW4gTWljcm9zeXN0ZW1zLCBJbmMuIEFsbCBSaWdodHMgUmVzZXJ2ZWQuAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAAABJRU5ErkJggg==');
+                countdownBeep.play().catch(e => console.log('Countdown play failed:', e));
+            };
 
             return (
                 <div className="container mx-auto p-4">
