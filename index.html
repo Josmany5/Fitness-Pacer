@@ -50,23 +50,9 @@
                 if (page === 'workout' && isResting && timer > 0) {
                     interval = setInterval(() => {
                         setTimer(prevTime => {
-                            if (prevTime <= 3 && prevTime > 0) {
-                                try {
-                                    playSound('countdown');
-                                    vibrateDevice();
-                                } catch (error) {
-                                    console.error('Sound play failed:', error);
-                                }
-                            }
                             if (prevTime > 0) {
                                 return prevTime - 1;
                             } else {
-                                try {
-                                    playSound('timerComplete');
-                                    vibrateDevice();
-                                } catch (error) {
-                                    console.error('Sound play failed:', error);
-                                }
                                 setIsResting(false);
                                 return 0;
                             }
@@ -74,18 +60,7 @@
                     }, 1000);
                 } else if (page === 'liveWorkout' && isResting) {
                     interval = setInterval(() => {
-                        setTimer(prevTime => {
-                            const newTime = prevTime + 1;
-                            if (newTime % 60 === 0) {
-                                try {
-                                    playSound('countdown');
-                                    vibrateDevice();
-                                } catch (error) {
-                                    console.error('Sound play failed:', error);
-                                }
-                            }
-                            return newTime;
-                        });
+                        setTimer(prevTime => prevTime + 1);
                     }, 1000);
                 }
                 return () => clearInterval(interval);
@@ -140,7 +115,6 @@
                 personalBests: {},
                 frequentExercises: {}
             });
-            const [soundEnabled, setSoundEnabled] = useState(true);
 
             // Use the custom timer hook
             useTimer(page, isResting, timer, setTimer, setIsResting);
@@ -278,13 +252,11 @@
             };
 
             const completeSet = () => {
-                playSound('setComplete');
                 const currentExercise = workout[currentExerciseIndex];
                 const currentSet = currentExercise.sets[currentSetIndex];
                 const restTimeInSeconds = parseTime(currentSet.rest);
                 setTimer(restTimeInSeconds);
                 setIsResting(true);
-                playSound('restStart');
             };
 
             const nextSet = () => {
@@ -303,7 +275,6 @@
             };
 
             const finishWorkout = () => {
-                playSound('workoutComplete');
                 const newHistory = [...history, { 
                     workout, 
                     date: new Date(),
@@ -381,7 +352,6 @@
                     return;
                 }
 
-                playSound('workoutComplete');
                 const workoutEntry = {
                     liveWorkout: [...liveWorkout],
                     date: new Date(),
@@ -666,12 +636,27 @@
                                         </div>
                                         <div className="w-1/4">
                                             <label className="block mb-1">Rest Time (mm:ss)</label>
-                                            <input type="text" placeholder="00:00" value={set.rest} onChange={(e) => {
-                                                const value = e.target.value;
-                                                if (/^[0-9:]*$/.test(value)) {
+                                            <input 
+                                                type="text" 
+                                                placeholder="0:00" 
+                                                value={set.rest} 
+                                                onChange={(e) => {
+                                                    let value = e.target.value.replace(/[^0-9]/g, ''); // Keep only numbers
+                                                    
+                                                    if (value) {
+                                                        if (value.length <= 2) {
+                                                            value = `0:${value.padStart(2, '0')}`;
+                                                        } else {
+                                                            const mins = parseInt(value.slice(0, -2));
+                                                            const secs = value.slice(-2);
+                                                            value = `${mins}:${secs}`;
+                                                        }
+                                                    }
+                                                    
                                                     handleSetChange(exerciseIndex, setIndex, 'rest', value);
-                                                }
-                                            }} className="border p-2 rounded w-full" />
+                                                }} 
+                                                className="border p-2 rounded w-full" 
+                                            />
                                         </div>
                                     </div>
                                     {setIndex === 0 && (
@@ -702,35 +687,6 @@
                     <button onClick={() => setPage('home')} className="bg-gray-500 text-white px-4 py-2 rounded">Back to Menu</button>
                 </div>
             );
-
-            // Replace the existing sound functions with this:
-            const sounds = {
-                timerComplete: new Audio('https://assets.mixkit.co/sfx/preview/mixkit-achievement-bell-600.mp3'),
-                countdown: new Audio('https://assets.mixkit.co/sfx/preview/mixkit-simple-countdown-922.mp3'),
-                restStart: new Audio('https://assets.mixkit.co/sfx/preview/mixkit-start-match-countdown-1954.mp3'),
-                setComplete: new Audio('https://assets.mixkit.co/sfx/preview/mixkit-positive-interface-beep-221.mp3'),
-                workoutComplete: new Audio('https://assets.mixkit.co/sfx/preview/mixkit-winning-chimes-2015.mp3')
-            };
-
-            // Update the sound functions
-            const playSound = (soundType) => {
-                if (soundEnabled) {
-                    sounds[soundType].play().catch(e => console.log('Audio play failed:', e));
-                }
-            };
-
-            const vibrateDevice = () => {
-                if (navigator.vibrate) {
-                    navigator.vibrate(200);
-                }
-            };
-
-            useEffect(() => {
-                // Preload sounds
-                Object.values(sounds).forEach(sound => {
-                    sound.load();
-                });
-            }, []);
 
             return (
                 <div className="container mx-auto p-4">
