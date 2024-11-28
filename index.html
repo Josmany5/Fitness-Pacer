@@ -711,42 +711,42 @@
             return (
                 <div className="container mx-auto p-4">
                     {page === 'home' && (
-                        <div className="text-center">
+                        <div className="text-center p-4">
                             <h1 className="text-4xl font-bold mb-8">Fitness Pacer</h1>
-                            <div className="flex flex-col space-y-4 max-w-sm mx-auto">
+                            <div className="flex flex-col space-y-4 max-w-xs mx-auto px-4">
                                 <button 
                                     onClick={() => { setPage('createWorkout'); resetCreateWorkoutPage(); }} 
-                                    className="bg-blue-500 text-white px-6 py-3 rounded text-lg w-full"
+                                    className="bg-blue-500 text-white px-4 py-3 rounded-lg text-lg"
                                 >
                                     Create Your Workout
                                 </button>
                                 <button 
                                     onClick={() => setPage('liveWorkout')} 
-                                    className="bg-green-500 text-white px-6 py-3 rounded text-lg w-full"
+                                    className="bg-green-500 text-white px-4 py-3 rounded-lg text-lg"
                                 >
                                     Live Workout
                                 </button>
                                 <button 
                                     onClick={() => setPage('savedWorkouts')} 
-                                    className="bg-yellow-500 text-white px-6 py-3 rounded text-lg w-full"
+                                    className="bg-yellow-500 text-white px-4 py-3 rounded-lg text-lg"
                                 >
                                     Saved Workouts
                                 </button>
                                 <button 
                                     onClick={() => setPage('history')} 
-                                    className="bg-gray-500 text-white px-6 py-3 rounded text-lg w-full"
+                                    className="bg-gray-500 text-white px-4 py-3 rounded-lg text-lg"
                                 >
                                     View History
                                 </button>
                                 <button 
                                     onClick={() => setPage('progress')} 
-                                    className="bg-purple-500 text-white px-6 py-3 rounded text-lg w-full"
+                                    className="bg-purple-500 text-white px-4 py-3 rounded-lg text-lg"
                                 >
                                     View Progress
                                 </button>
                                 <button 
                                     onClick={() => setPage('statistics')} 
-                                    className="bg-indigo-500 text-white px-6 py-3 rounded text-lg w-full"
+                                    className="bg-indigo-500 text-white px-4 py-3 rounded-lg text-lg"
                                 >
                                     View Statistics
                                 </button>
