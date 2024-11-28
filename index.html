@@ -8,67 +8,6 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css"></link>
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <style>
-        /* Modern Card Style */
-        .app-card {
-            background: rgba(255, 255, 255, 0.9);
-            backdrop-filter: blur(10px);
-            border-radius: 16px;
-            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
-            border: 1px solid rgba(255, 255, 255, 0.3);
-        }
-
-        /* Modern Button Style */
-        .app-button {
-            padding: 12px 24px;
-            border-radius: 12px;
-            font-weight: 600;
-            transition: all 0.3s ease;
-            transform: translateY(0);
-        }
-
-        .app-button:active {
-            transform: translateY(2px);
-        }
-
-        /* Modern Input Style */
-        .app-input {
-            border: none;
-            background: #f5f5f5;
-            border-radius: 12px;
-            padding: 12px 16px;
-            transition: all 0.3s ease;
-        }
-
-        .app-input:focus {
-            background: #fff;
-            box-shadow: 0 0 0 2px #3b82f6;
-            outline: none;
-        }
-
-        @keyframes slideIn {
-            from { transform: translateX(100%); }
-            to { transform: translateX(0); }
-        }
-
-        .page-transition {
-            animation: slideIn 0.3s ease-out;
-        }
-
-        .loading-spinner {
-            width: 40px;
-            height: 40px;
-            border: 4px solid #f3f3f3;
-            border-top: 4px solid #3b82f6;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-    </style>
 </head>
 <body class="bg-gray-100 font-roboto">
     <div id="root"></div>
@@ -181,25 +120,41 @@
             useTimer(page, isResting, timer, setTimer, setIsResting);
 
             useEffect(() => {
-                // Load all saved data when the app starts
-                const storedUser = localStorage.getItem('user');
-                if (storedUser) {
-                    const user = JSON.parse(storedUser);
-                    setUser(user);
-                    
-                    // Load history
-                    const storedHistory = localStorage.getItem(`history_${user.username}`);
-                    if (storedHistory) {
-                        setHistory(JSON.parse(storedHistory));
+                try {
+                    const storedUser = localStorage.getItem('user');
+                    if (storedUser) {
+                        const user = JSON.parse(storedUser);
+                        setUser(user);
+                        
+                        try {
+                            const storedHistory = localStorage.getItem(`history_${user.username}`);
+                            if (storedHistory) {
+                                const parsedHistory = JSON.parse(storedHistory);
+                                // Validate history entries
+                                const validHistory = parsedHistory.filter(entry => 
+                                    entry && entry.date && 
+                                    (
+                                        (entry.workout && Array.isArray(entry.workout)) || 
+                                        (entry.liveWorkout && Array.isArray(entry.liveWorkout))
+                                    )
+                                );
+                                setHistory(validHistory);
+                            }
+                            
+                            const storedWorkouts = localStorage.getItem(`savedWorkouts_${user.username}`);
+                            if (storedWorkouts) {
+                                setSavedWorkouts(JSON.parse(storedWorkouts));
+                            }
+                        } catch (error) {
+                            console.error('Error loading data:', error);
+                            clearLocalStorage(); // Clear corrupted data
+                        }
                     }
-                    
-                    // Load saved workouts
-                    const storedWorkouts = localStorage.getItem(`savedWorkouts_${user.username}`);
-                    if (storedWorkouts) {
-                        setSavedWorkouts(JSON.parse(storedWorkouts));
-                    }
+                } catch (error) {
+                    console.error('Error loading user:', error);
+                    localStorage.clear(); // Clear all data if user data is corrupted
                 }
-            }, []); // Empty dependency array means this runs once when component mounts
+            }, []);
 
             useEffect(() => {
                 if (user) {
@@ -416,41 +371,41 @@
             };
 
             const finishLiveWorkout = () => {
-                if (user) {
-                    // Check if there are any exercises recorded
-                    if (liveWorkout.length === 0) {
-                        alert('No exercises recorded');
-                        return;
-                    }
-
-                    console.log('Current live workout:', liveWorkout);
-                    
-                    const workoutEntry = {
-                        liveWorkout,
-                        date: new Date(),
-                        notes: workoutNotes,
-                        volume: calculateTotalVolume({ liveWorkout })
-                    };
-                    
-                    console.log('Workout entry being saved:', workoutEntry);
-                    
-                    const newHistory = [...history, workoutEntry];
-                    setHistory(newHistory);
-                    localStorage.setItem(`history_${user.username}`, JSON.stringify(newHistory));
-                    
-                    // Reset states
-                    setLiveWorkout([]);
-                    setWorkoutNotes('');
-                    setCurrentSet({ reps: 0, weight: 0, exertion: 0 });
-                    setCurrentExercise('');
-                    setTimer(0);
-                    setIsResting(false);
-                    
-                    setPage('home');
-                    updateStatistics();
-                } else {
+                if (!user) {
                     alert('Please log in to save workout history');
+                    return;
                 }
+                
+                if (liveWorkout.length === 0) {
+                    alert('No exercises recorded');
+                    return;
+                }
+
+                // Create workout entry
+                const workoutEntry = {
+                    liveWorkout: [...liveWorkout], // Create a copy of the workout data
+                    date: new Date(),
+                    notes: workoutNotes,
+                    volume: calculateTotalVolume({ liveWorkout })
+                };
+
+                // Update history
+                const newHistory = [...history, workoutEntry];
+                setHistory(newHistory);
+                
+                // Save to localStorage
+                localStorage.setItem(`history_${user.username}`, JSON.stringify(newHistory));
+
+                // Reset all states
+                setLiveWorkout([]);
+                setWorkoutNotes('');
+                setCurrentSet({ reps: 0, weight: 0, exertion: 0 });
+                setCurrentExercise('');
+                setTimer(0);
+                setIsResting(false);
+
+                // Navigate home
+                setPage('home');
             };
 
             const saveWorkout = () => {
@@ -753,28 +708,23 @@
                 </div>
             );
 
-            // Add this component for mobile-style navigation
-            const BottomNav = ({ currentPage, setPage }) => (
-                <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 pb-safe">
-                    <div className="grid grid-cols-5 h-16">
-                        <button 
-                            onClick={() => setPage('home')}
-                            className={`flex flex-col items-center justify-center ${currentPage === 'home' ? 'text-primary' : 'text-gray-500'}`}
-                        >
-                            <i className="fas fa-home text-xl"></i>
-                            <span className="text-xs mt-1">Home</span>
-                        </button>
-                        <button 
-                            onClick={() => setPage('createWorkout')}
-                            className={`flex flex-col items-center justify-center ${currentPage === 'createWorkout' ? 'text-primary' : 'text-gray-500'}`}
-                        >
-                            <i className="fas fa-plus text-xl"></i>
-                            <span className="text-xs mt-1">Create</span>
-                        </button>
-                        {/* Add other navigation items */}
-                    </div>
-                </div>
-            );
+            const clearLocalStorage = () => {
+                if (user) {
+                    localStorage.removeItem(`history_${user.username}`);
+                    localStorage.removeItem(`savedWorkouts_${user.username}`);
+                    localStorage.removeItem('user');
+                    setHistory([]);
+                    setSavedWorkouts([]);
+                    setUser(null);
+                    setLiveWorkout([]);
+                    setWorkout([]);
+                    setCurrentSet({ reps: 0, weight: 0, exertion: 0 });
+                    setCurrentExercise('');
+                    setTimer(0);
+                    setIsResting(false);
+                    setPage('home');
+                }
+            };
 
             return (
                 <div className="container mx-auto p-4">
@@ -804,6 +754,14 @@
                                     >
                                         View Statistics
                                     </button>
+                                    {user && (
+                                        <button 
+                                            onClick={clearLocalStorage} 
+                                            className="bg-red-500 text-white px-4 py-2 rounded m-2"
+                                        >
+                                            Reset All Data
+                                        </button>
+                                    )}
                                 </div>
                             )}
                         </div>
@@ -1026,7 +984,6 @@
                             </button>
                         </div>
                     )}
-                    <BottomNav currentPage={page} setPage={setPage} />
                 </div>
             );
         };
