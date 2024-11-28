@@ -584,16 +584,16 @@
                 }
             }, [page, progressData]);
 
-            const calculateTotalVolume = (workoutData) => {
+            const calculateTotalVolume = (entry) => {
                 let volume = 0;
-                if (workoutData.workout) {
-                    workoutData.workout.forEach(exercise => {
+                if (entry.workout) {
+                    entry.workout.forEach(exercise => {
                         exercise.sets.forEach(set => {
                             volume += (parseInt(set.reps) || 0) * (parseInt(set.weight) || 0);
                         });
                     });
-                } else if (workoutData.liveWorkout) {
-                    workoutData.liveWorkout.forEach(exercise => {
+                } else if (entry.liveWorkout) {
+                    entry.liveWorkout.forEach(exercise => {
                         const reps = exercise.reps.split(',').map(r => parseInt(r) || 0);
                         const weights = exercise.weight.split(',').map(w => parseInt(w) || 0);
                         reps.forEach((rep, i) => {
@@ -646,7 +646,7 @@
             const updateStatistics = () => {
                 const stats = {
                     totalWorkouts: history.length,
-                    totalVolume: history.reduce((total, entry) => total + (entry.volume || calculateTotalVolume(entry)), 0), 0),
+                    totalVolume: history.reduce((total, entry) => total + (entry.volume || calculateTotalVolume(entry)), 0),
                     personalBests: calculatePersonalBests(),
                     frequentExercises: getMostFrequentExercises()
                 };
