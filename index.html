@@ -708,24 +708,6 @@
                 </div>
             );
 
-            const clearLocalStorage = () => {
-                if (user) {
-                    localStorage.removeItem(`history_${user.username}`);
-                    localStorage.removeItem(`savedWorkouts_${user.username}`);
-                    localStorage.removeItem('user');
-                    setHistory([]);
-                    setSavedWorkouts([]);
-                    setUser(null);
-                    setLiveWorkout([]);
-                    setWorkout([]);
-                    setCurrentSet({ reps: 0, weight: 0, exertion: 0 });
-                    setCurrentExercise('');
-                    setTimer(0);
-                    setIsResting(false);
-                    setPage('home');
-                }
-            };
-
             return (
                 <div className="container mx-auto p-4">
                     {page === 'home' && (
@@ -754,14 +736,6 @@
                                     >
                                         View Statistics
                                     </button>
-                                    {user && (
-                                        <button 
-                                            onClick={clearLocalStorage} 
-                                            className="bg-red-500 text-white px-4 py-2 rounded m-2"
-                                        >
-                                            Reset All Data
-                                        </button>
-                                    )}
                                 </div>
                             )}
                         </div>
