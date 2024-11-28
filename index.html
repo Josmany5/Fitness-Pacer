@@ -51,18 +51,17 @@
                     interval = setInterval(() => {
                         setTimer(prevTime => {
                             if (prevTime <= 3 && prevTime > 0) {
-                                try {
-                                    playSound('countdown');
-                                    vibrateDevice();
-                                } catch (error) {
-                                    console.error('Sound play failed:', error);
-                                }
+                                console.log('Playing countdown sound at', prevTime);
+                                vibrateDevice();
+                            }
+                            if (prevTime === 0) {
+                                console.log('Playing timer complete sound');
+                                vibrateDevice();
                             }
                             if (prevTime > 0) {
                                 return prevTime - 1;
                             } else {
                                 try {
-                                    playSound('timerComplete');
                                     vibrateDevice();
                                 } catch (error) {
                                     console.error('Sound play failed:', error);
@@ -78,7 +77,6 @@
                             const newTime = prevTime + 1;
                             if (newTime % 60 === 0) {
                                 try {
-                                    playSound('countdown');
                                     vibrateDevice();
                                 } catch (error) {
                                     console.error('Sound play failed:', error);
@@ -278,13 +276,8 @@
             };
 
             const completeSet = () => {
-                playSound('setComplete');
-                const currentExercise = workout[currentExerciseIndex];
-                const currentSet = currentExercise.sets[currentSetIndex];
-                const restTimeInSeconds = parseTime(currentSet.rest);
-                setTimer(restTimeInSeconds);
+                setTimer(0);
                 setIsResting(true);
-                playSound('restStart');
             };
 
             const nextSet = () => {
@@ -303,7 +296,6 @@
             };
 
             const finishWorkout = () => {
-                playSound('workoutComplete');
                 const newHistory = [...history, { 
                     workout, 
                     date: new Date(),
@@ -381,7 +373,6 @@
                     return;
                 }
 
-                playSound('workoutComplete');
                 const workoutEntry = {
                     liveWorkout: [...liveWorkout],
                     date: new Date(),
@@ -703,34 +694,11 @@
                 </div>
             );
 
-            // Replace the existing sound functions with this:
-            const sounds = {
-                timerComplete: new Audio('https://assets.mixkit.co/sfx/preview/mixkit-achievement-bell-600.mp3'),
-                countdown: new Audio('https://assets.mixkit.co/sfx/preview/mixkit-simple-countdown-922.mp3'),
-                restStart: new Audio('https://assets.mixkit.co/sfx/preview/mixkit-start-match-countdown-1954.mp3'),
-                setComplete: new Audio('https://assets.mixkit.co/sfx/preview/mixkit-positive-interface-beep-221.mp3'),
-                workoutComplete: new Audio('https://assets.mixkit.co/sfx/preview/mixkit-winning-chimes-2015.mp3')
-            };
-
-            // Update the sound functions
-            const playSound = (soundType) => {
-                if (soundEnabled) {
-                    sounds[soundType].play().catch(e => console.log('Audio play failed:', e));
-                }
-            };
-
             const vibrateDevice = () => {
                 if (navigator.vibrate) {
                     navigator.vibrate(200);
                 }
             };
-
-            useEffect(() => {
-                // Preload sounds
-                Object.values(sounds).forEach(sound => {
-                    sound.load();
-                });
-            }, []);
 
             return (
                 <div className="container mx-auto p-4">
