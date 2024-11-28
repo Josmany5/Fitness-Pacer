@@ -713,31 +713,20 @@
                     {page === 'home' && (
                         <div className="text-center">
                             <h1 className="text-4xl font-bold mb-4">Fitness Pacer</h1>
-                            {!user ? (
-                                <div>
-                                    <h2 className="text-2xl font-bold mb-2">Login</h2>
-                                    <input type="text" placeholder="Username" value={username} onChange={(e) => setUsername(e.target.value)} className="border p-2 rounded w-64 mb-2" />
-                                    <input type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} className="border p-2 rounded w-64 mb-2" />
-                                    <button onClick={handleLogin} className="bg-blue-500 text-white px-4 py-2 rounded m-2">Login</button>
-                                    <button onClick={handleSignup} className="bg-green-500 text-white px-4 py-2 rounded m-2">Sign Up</button>
-                                </div>
-                            ) : (
-                                <div>
-                                    <p className="text-xl mb-4">Welcome, {user.username}!</p>
-                                    <button onClick={() => { setPage('createWorkout'); resetCreateWorkoutPage(); }} className="bg-blue-500 text-white px-4 py-2 rounded m-2">Create Your Workout</button>
-                                    <button onClick={() => setPage('liveWorkout')} className="bg-green-500 text-white px-4 py-2 rounded m-2">Live Workout</button>
-                                    <button onClick={() => setPage('history')} className="bg-gray-500 text-white px-4 py-2 rounded m-2">View History</button>
-                                    <button onClick={() => setPage('savedWorkouts')} className="bg-yellow-500 text-white px-4 py-2 rounded m-2">Saved Workouts</button>
-                                    <button onClick={() => setPage('progress')} className="bg-purple-500 text-white px-4 py-2 rounded m-2">View Progress</button>
-                                    <button onClick={handleLogout} className="bg-red-500 text-white px-4 py-2 rounded m-2">Logout</button>
-                                    <button 
-                                        onClick={() => setPage('statistics')} 
-                                        className="bg-indigo-500 text-white px-4 py-2 rounded m-2"
-                                    >
-                                        View Statistics
-                                    </button>
-                                </div>
-                            )}
+                            <div>
+                                <button onClick={() => { setPage('createWorkout'); resetCreateWorkoutPage(); }} 
+                                    className="bg-blue-500 text-white px-4 py-2 rounded m-2">Create Your Workout</button>
+                                <button onClick={() => setPage('liveWorkout')} 
+                                    className="bg-green-500 text-white px-4 py-2 rounded m-2">Live Workout</button>
+                                <button onClick={() => setPage('savedWorkouts')} 
+                                    className="bg-yellow-500 text-white px-4 py-2 rounded m-2">Saved Workouts</button>
+                                <button onClick={() => setPage('history')} 
+                                    className="bg-gray-500 text-white px-4 py-2 rounded m-2">View History</button>
+                                <button onClick={() => setPage('progress')} 
+                                    className="bg-purple-500 text-white px-4 py-2 rounded m-2">View Progress</button>
+                                <button onClick={() => setPage('statistics')} 
+                                    className="bg-indigo-500 text-white px-4 py-2 rounded m-2">View Statistics</button>
+                            </div>
                         </div>
                     )}
 
