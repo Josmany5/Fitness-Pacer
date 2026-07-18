@@ -413,9 +413,9 @@ ${exList}`;
                     const response = await askGemini(sysPrompt, trimmedHistory, text);
 
                     // Parse JSON commands from response
-                    // WORKOUT_JSON can be an array [...] or an object {exercises: [...]}
-                    let workoutJSON = extractJSONArray(response, 'WORKOUT_JSON:');
-                    if (!workoutJSON) workoutJSON = extractJSON(response, 'WORKOUT_JSON:');
+                    // Try object format first (has workoutName), then array fallback
+                    let workoutJSON = extractJSON(response, 'WORKOUT_JSON:');
+                    if (!workoutJSON) workoutJSON = extractJSONArray(response, 'WORKOUT_JSON:');
                     
                     // Fallback: try to find any JSON array in the response that looks like workout data
                     if (!workoutJSON) {
