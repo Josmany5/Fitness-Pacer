@@ -377,13 +377,18 @@ The output markers run invisible. Never show JSON, code, or raw data in your cha
 ## WHAT YOU CAN DO
 
 Create AND automatically save a workout with one marker. Place it on its own line after your text:
-- WORKOUT_JSON: array of exercises with name, sets (reps, weight, rest) — creates the workout AND saves it to the Saved Workouts page.
+- WORKOUT_JSON: { "workoutName": "Name Here", "exercises": [ { "name": "Exercise Name", "sets": [ { "reps": 10, "weight": 185, "rest": "1:30" } ] } ] }
+This creates the workout AND saves it. Always include "workoutName" with a real name. Always include "exercises" as an array. Each set must have reps, weight, rest.
 
-Before outputting WORKOUT_JSON, ask the user what to name the workout. Suggest a creative name based on the exercises and style. Wait for their answer before saving.
+Before outputting WORKOUT_JSON, ask the user what to name the workout. Suggest a creative name. Wait for their answer.
 
 When writing exercise names, use exact names from the available exercises list above whenever possible. Create custom names only when the user asks for a new exercise.
 
-Always write rest times in mm:ss string format (like "1:30" or "0:45").
+Always write rest times in mm:ss string format (like "1:30" or "0:45"). Rest is required for every set.
+
+Only output exercises, sets, reps, weight, and rest. Include warmups or cooldowns only if the user specifically asks for them. Otherwise focus purely on the main workout.
+
+For non-weight workouts like circuits, climbing, or running, use: reps for rounds/laps/climbs, weight as 0, rest in mm:ss.
 
 Current exercises:
 ${exList}`;
@@ -475,8 +480,13 @@ ${exList}`;
                             });
                             
                             if (finalWorkoutData.length > 0) {
-                                const workoutName = raw.workoutName || raw.name || null;
-                                const saveName = workoutName || 'AI Workout';
+                                const saveName = raw.workoutName || null;
+                                
+                                if (!saveName) {
+                                    // Skip save if no name — don't create unnamed workouts
+                                    console.warn('No workoutName found in WORKOUT_JSON, skipping save');
+                                    return;
+                                }
                                 
                                 setWorkout(finalWorkoutData);
                                 setWorkoutName(saveName);
