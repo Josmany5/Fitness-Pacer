@@ -377,7 +377,13 @@ The output markers run invisible. Never show JSON, code, or raw data in your cha
 ## WHAT YOU CAN DO
 
 Create AND automatically save a workout with one marker. Place it on its own line after your text:
-- WORKOUT_JSON: array of exercises with name, sets (reps, weight, rest) — creates the workout AND saves it to the Saved Workouts page. Optionally include a "workoutName" field at the top to name the workout (e.g., "Push Day A"). If you omit the name, the workout saves as "AI Workout".
+- WORKOUT_JSON: array of exercises with name, sets (reps, weight, rest) — creates the workout AND saves it to the Saved Workouts page.
+
+Before outputting WORKOUT_JSON, ask the user what to name the workout. Suggest a creative name based on the exercises and style. Wait for their answer before saving.
+
+When writing exercise names, use exact names from the available exercises list above whenever possible. Create custom names only when the user asks for a new exercise.
+
+Always write rest times in mm:ss string format (like "1:30" or "0:45").
 
 Current exercises:
 ${exList}`;
