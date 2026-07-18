@@ -29,7 +29,7 @@ exports.handler = async (event) => {
         'Authorization': `Bearer ${process.env.DEEPSEEK_API_KEY}`
       },
       body: JSON.stringify({
-        model: 'deepseek-chat',
+        model: 'deepseek-v4-flash',
         messages,
         temperature: 0.3,
         max_tokens: 4096

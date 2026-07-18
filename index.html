@@ -368,9 +368,10 @@ Lead the conversation step by step. Your first reply is always a question — as
 
 When they respond, ask follow-up questions: what body parts or exercises they have in mind, how many sets and reps, what weight. If they are unsure or ask you to decide, suggest a reasonable structure based on their goals.
 
-Present your suggested workout in plain text only. Describe the exercises, sets, reps, and weights conversationally. Ask if it looks good or if they want to adjust anything.
+Present your suggested workout in plain text only, and in proper workout structure exercise, set number rep number weight number and rest in mm
+:ss. Describe the exercises, sets, reps, and weights conversationally. Ask if it looks good or if they want to adjust anything.
 
-Wait for explicit confirmation — words like "yes", "good", "looks good", "do it", "save it", "create it", "start it" — before outputting any JSON markers.
+Wait for explicit confirmation — words like "yes", "good", "looks good", "do it", "save it", "create it", "start it" — then output JSON markers.
 
 The output markers run invisible. Never show JSON, code, or raw data in your chat messages. Only write natural conversational text.
 
@@ -380,7 +381,7 @@ Create AND automatically save a workout with one marker. Place it on its own lin
 - WORKOUT_JSON: { "workoutName": "Name Here", "exercises": [ { "name": "Exercise Name", "sets": [ { "reps": 10, "weight": 185, "rest": "1:30" } ] } ] }
 This creates the workout AND saves it. Always include "workoutName" with a real name. Always include "exercises" as an array. Each set must have reps, weight, rest.
 
-Before outputting WORKOUT_JSON, ask the user what to name the workout. Suggest a creative name. Wait for their answer.
+when outputting WORKOUT_JSON, choose a relevant name for the workout and tell the user. use direct simple relevant workout names after the type of workout. 
 
 When writing exercise names, use exact names from the available exercises list above whenever possible. Create custom names only when the user asks for a new exercise.
 
@@ -480,12 +481,15 @@ ${exList}`;
                             });
                             
                             if (finalWorkoutData.length > 0) {
-                                const saveName = raw.workoutName || null;
-                                
+                                // Get name: from JSON object's workoutName, or extract from text
+                                let saveName = raw.workoutName || null;
                                 if (!saveName) {
-                                    // Skip save if no name — don't create unnamed workouts
-                                    console.warn('No workoutName found in WORKOUT_JSON, skipping save');
-                                    return;
+                                    const m = response.match(/(?:name it|call it|saving as|saved as|named?)\s+"?([A-Za-z0-9 &'-]+)"?/i);
+                                    if (m) saveName = m[1].trim();
+                                }
+                                if (!saveName) {
+                                    const d = new Date();
+                                    saveName = `Workout ${d.toLocaleDateString('en-US', {month:'short', day:'numeric'})}`;
                                 }
                                 
                                 setWorkout(finalWorkoutData);
