@@ -405,7 +405,7 @@ ${exList}`;
                 setIsLoading(true);
 
                 try {
-                    const trimmedHistory = messages.slice(-10);
+                    const trimmedHistory = messages.slice(-5);
                     
                     // Build prompt with current state info
                     const sysPrompt = buildSystemPrompt() + `\nCurrent workout state: ${JSON.stringify(workout)}\nSaved workouts: ${savedWorkouts.map(w => w.name).join(', ') || 'none'}`;
