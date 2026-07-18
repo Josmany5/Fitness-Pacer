@@ -8,6 +8,179 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css"></link>
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* AI Chat Styles */
+        .ai-toggle-btn {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            font-size: 28px;
+            border: none;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+            z-index: 9999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.3s ease;
+        }
+        .ai-toggle-btn:hover {
+            transform: scale(1.1);
+        }
+        .ai-toggle-btn.open {
+            background: #ef4444;
+            transform: rotate(90deg);
+        }
+        .ai-chat-panel {
+            position: fixed;
+            bottom: 90px;
+            right: 20px;
+            width: 380px;
+            max-height: 600px;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            z-index: 9998;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+        .ai-chat-panel.minimized {
+            max-height: 50px;
+            overflow: hidden;
+        }
+        .ai-chat-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 12px 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+        .ai-chat-header h3 {
+            margin: 0;
+            font-size: 16px;
+            font-weight: 700;
+        }
+        .ai-chat-header button {
+            background: none;
+            border: none;
+            color: white;
+            cursor: pointer;
+            font-size: 16px;
+            padding: 0 4px;
+            opacity: 0.8;
+        }
+        .ai-chat-header button:hover {
+            opacity: 1;
+        }
+        .ai-chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 12px;
+            min-height: 200px;
+            max-height: 400px;
+            background: #f8f9fa;
+        }
+        .ai-message {
+            margin-bottom: 12px;
+            padding: 10px 14px;
+            border-radius: 12px;
+            max-width: 85%;
+            word-wrap: break-word;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+        .ai-message.user {
+            background: #667eea;
+            color: white;
+            margin-left: auto;
+            border-bottom-right-radius: 4px;
+        }
+        .ai-message.assistant {
+            background: white;
+            color: #333;
+            border: 1px solid #e0e0e0;
+            border-bottom-left-radius: 4px;
+        }
+        .ai-message.assistant p { margin: 0 0 8px 0; }
+        .ai-message.assistant p:last-child { margin-bottom: 0; }
+        .ai-message.assistant ul, .ai-message.assistant ol { margin: 4px 0; padding-left: 20px; }
+        .ai-message.assistant li { margin-bottom: 2px; }
+        .ai-message.assistant strong { font-weight: 700; }
+        .ai-chat-input-area {
+            display: flex;
+            padding: 8px;
+            border-top: 1px solid #e0e0e0;
+            background: white;
+            flex-shrink: 0;
+        }
+        .ai-chat-input-area input {
+            flex: 1;
+            padding: 10px 12px;
+            border: 1px solid #ddd;
+            border-radius: 24px;
+            outline: none;
+            font-size: 14px;
+            margin-right: 8px;
+        }
+        .ai-chat-input-area input:focus {
+            border-color: #667eea;
+        }
+        .ai-chat-input-area button {
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            flex-shrink: 0;
+        }
+        .ai-chat-input-area button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .ai-loading {
+            display: flex;
+            align-items: center;
+            padding: 10px 14px;
+            gap: 8px;
+        }
+        .ai-loading .dot {
+            width: 8px;
+            height: 8px;
+            background: #667eea;
+            border-radius: 50%;
+            animation: bounce 1.4s infinite ease-in-out both;
+        }
+        .ai-loading .dot:nth-child(1) { animation-delay: -0.32s; }
+        .ai-loading .dot:nth-child(2) { animation-delay: -0.16s; }
+        .ai-loading .dot:nth-child(3) { animation-delay: 0s; }
+        @keyframes bounce {
+            0%, 80%, 100% { transform: scale(0); }
+            40% { transform: scale(1); }
+        }
+        .ai-empty-state {
+            text-align: center;
+            color: #999;
+            padding: 40px 20px;
+            font-size: 14px;
+        }
+        .ai-empty-state .icon { font-size: 40px; margin-bottom: 10px; }
+    </style>
 </head>
 <body class="bg-gray-100 font-roboto">
     <div id="root"></div>
@@ -15,13 +188,74 @@
     <script src="https://unpkg.com/react-dom@17/umd/react-dom.development.js" crossorigin></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script type="text/babel">
-        const { useState, useEffect } = React;
+        const { useState, useEffect, useRef } = React;
 
         const initialExercisesList = [
             "Squat", "Deadlift", "Pulldown", "Row", "Benchpress", "Shoulderpress", 
             "Bicep Curls", "Tricep Extensions", "Ham Curl", "Glute Thrust", 
             "Shrugs", "Chest Fly", "Delt Fly"
         ];
+
+        // ===== AI SERVICE =====
+        const AI_API_URL = 'http://localhost:3002/api/ai';
+
+        const askGemini = async (systemPrompt, conversationHistory, userMessage) => {
+            const response = await fetch(AI_API_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    action: 'chat',
+                    data: { systemPrompt, conversationHistory, message: userMessage }
+                })
+            });
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error || 'AI request failed');
+            }
+            const data = await response.json();
+            return data.response;
+        };
+
+        // ===== JSON EXTRACTION =====
+        const extractJSON = (text, prefix) => {
+            let cleanText = text.replace(/```(?:json|tool_code)?\n?/g, '').replace(/```/g, '');
+            const startIndex = cleanText.indexOf(prefix);
+            if (startIndex === -1) return null;
+            const jsonStart = cleanText.indexOf('{', startIndex);
+            if (jsonStart === -1) return null;
+            let braceCount = 0, inString = false, escaped = false;
+            for (let i = jsonStart; i < cleanText.length; i++) {
+                const char = cleanText[i];
+                if (escaped) { escaped = false; continue; }
+                if (char === '\\') { escaped = true; continue; }
+                if (char === '"') { inString = !inString; continue; }
+                if (!inString) {
+                    if (char === '{') braceCount++;
+                    if (char === '}') { braceCount--; if (braceCount === 0) return text.substring(jsonStart, i + 1); }
+                }
+            }
+            return null;
+        };
+
+        const extractJSONArray = (text, prefix) => {
+            let cleanText = text.replace(/```(?:json|tool_code)?\n?/g, '').replace(/```/g, '');
+            const startIndex = cleanText.indexOf(prefix);
+            if (startIndex === -1) return null;
+            const jsonStart = cleanText.indexOf('[', startIndex);
+            if (jsonStart === -1) return null;
+            let bracketCount = 0, inString = false, escaped = false;
+            for (let i = jsonStart; i < cleanText.length; i++) {
+                const char = cleanText[i];
+                if (escaped) { escaped = false; continue; }
+                if (char === '\\') { escaped = true; continue; }
+                if (char === '"') { inString = !inString; continue; }
+                if (!inString) {
+                    if (char === '[') bracketCount++;
+                    if (char === ']') { bracketCount--; if (bracketCount === 0) return cleanText.substring(jsonStart, i + 1); }
+                }
+            }
+            return null;
+        };
 
         // Time utilities
         const formatTime = (timeInSeconds) => {
@@ -43,29 +277,37 @@
             }
         };
 
-        // Timer Hook
-        const useTimer = (page, isResting, timer, setTimer, setIsResting) => {
-            useEffect(() => {
-                let interval;
-                if (page === 'workout' && isResting && timer > 0) {
-                    interval = setInterval(() => {
-                        setTimer(prevTime => {
-                            if (prevTime > 0) {
-                                return prevTime - 1;
-                            } else {
-                                setIsResting(false);
-                                return 0;
-                            }
-                        });
-                    }, 1000);
-                } else if (page === 'liveWorkout' && isResting) {
-                    interval = setInterval(() => {
-                        setTimer(prevTime => prevTime + 1);
-                    }, 1000);
-                }
-                return () => clearInterval(interval);
-            }, [page, isResting, timer]);
-        };
+            // Timer Hook
+            const useTimer = (page, isResting, timer, setTimer) => {
+                useEffect(() => {
+                    let interval;
+                    if (page === 'workout' && isResting && timer > 0) {
+                        interval = setInterval(() => {
+                            setTimer(prevTime => prevTime > 0 ? prevTime - 1 : 0);
+                        }, 1000);
+                    } else if (page === 'liveWorkout' && isResting) {
+                        interval = setInterval(() => {
+                            setTimer(prevTime => prevTime + 1);
+                        }, 1000);
+                    }
+                    return () => clearInterval(interval);
+                }, [page, isResting, timer]);
+            };
+            
+            // Set stopwatch hook (counts up during set)
+            const useSetStopwatch = (page, isDoingSet, setStopwatch, setSetStopwatch) => {
+                useEffect(() => {
+                    let interval;
+                    if (page === 'workout' && isDoingSet) {
+                        interval = setInterval(() => {
+                            setSetStopwatch(prev => prev + 1);
+                        }, 1000);
+                    }
+                    return () => {
+                        if (interval) clearInterval(interval);
+                    };
+                }, [page, isDoingSet]);
+            };
 
         // MultiSetAdder Component
         const MultiSetAdder = ({ exerciseIndex, addSet }) => {
@@ -90,6 +332,344 @@
             );
         };
 
+        // ===== AI CHAT COMPONENT =====
+        const AIChatWidget = ({ exercisesList, setExercisesList, workout, setWorkout, workoutName, setWorkoutName, savedWorkouts, setSavedWorkouts, setPage, resetCreateWorkoutPage, startWorkout, user }) => {
+            const [isOpen, setIsOpen] = useState(false);
+            const [isMinimized, setIsMinimized] = useState(false);
+            const [messages, setMessages] = useState([]);
+            const [input, setInput] = useState('');
+            const [isLoading, setIsLoading] = useState(false);
+            const messagesEndRef = useRef(null);
+            const inputRef = useRef(null);
+
+            useEffect(() => {
+                if (isOpen && !isMinimized) {
+                    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+                    setTimeout(() => inputRef.current?.focus(), 300);
+                }
+            }, [messages, isOpen, isMinimized]);
+
+            // Build system prompt for fitness AI
+            const buildSystemPrompt = () => {
+                const exList = exercisesList.map(e => `- ${e}`).join('\n');
+                return `You are a workout programming AI in the Fitness Pacer app. You know all strength, running/cardio, sport, yoga, flexibility/mobility, calisthenics, and hypertrophy training methodologies.
+
+## ABOUT THE USER
+
+You work with a single experienced athlete:
+- 5'10", 175 lbs, aiming to lose 10 pounds while building strength and size
+- Rock climber (boulders V1-V6+, routes 5.10-5.13), kung fu practitioner (mantis, crane, lohan, weapon styles), boxer, parkour, calisthenics, weightlifter, and runner
+- Trains with weights, bodyweight, climbing drills, martial arts forms, running/cardio, boxing, parkour, and flexibility
+- Create custom exercises for any activity — climbing problems, kung fu drills, running splits, etc.
+
+## HOW YOU WORK
+
+Lead the conversation step by step. Your first reply is always a question — ask what kind of training they want today. Let them tell you.
+
+When they respond, ask follow-up questions: what body parts or exercises they have in mind, how many sets and reps, what weight. If they are unsure or ask you to decide, suggest a reasonable structure based on their goals.
+
+Present your suggested workout in plain text only. Describe the exercises, sets, reps, and weights conversationally. Ask if it looks good or if they want to adjust anything.
+
+Wait for explicit confirmation — words like "yes", "good", "looks good", "do it", "save it", "create it", "start it" — before outputting any JSON markers.
+
+The output markers run invisible. Never show JSON, code, or raw data in your chat messages. Only write natural conversational text.
+
+## WHAT YOU CAN DO
+
+You can create, save, start, load, or save-and-start workouts. Use these markers on their own line after your text:
+- WORKOUT_JSON: array of exercises with name, sets (reps, weight, rest) — fills the Create Workout page
+- SAVE_WORKOUT_JSON: {"name":"Name"} — saves workout. Always include braces around the name field.
+- START_WORKOUT_JSON: {"savedWorkoutName":"Name"} — loads a workout. Always include braces.
+
+Use multiple markers if needed (e.g., create and save in one response).
+
+Current exercises:
+${exList}`;
+            };
+
+            const handleSend = async () => {
+                const text = input.trim();
+                if (!text || isLoading) return;
+
+                const userMsg = { role: 'user', content: text, timestamp: Date.now() };
+                setMessages(prev => [...prev, userMsg]);
+                setInput('');
+                setIsLoading(true);
+
+                try {
+                    const trimmedHistory = messages.slice(-10);
+                    
+                    // Build prompt with current state info
+                    const sysPrompt = buildSystemPrompt() + `\nCurrent workout state: ${JSON.stringify(workout)}\nSaved workouts: ${savedWorkouts.map(w => w.name).join(', ') || 'none'}`;
+                    
+                    const response = await askGemini(sysPrompt, trimmedHistory, text);
+
+                    // Parse JSON commands from response
+                    // WORKOUT_JSON can be an array [...] or an object {exercises: [...]}
+                    let workoutJSON = extractJSONArray(response, 'WORKOUT_JSON:');
+                    if (!workoutJSON) workoutJSON = extractJSON(response, 'WORKOUT_JSON:');
+                    
+                    // Fallback: try to find any JSON array in the response that looks like workout data
+                    if (!workoutJSON) {
+                        const arrayMatch = response.match(/\[\s*\{\s*"name"\s*:/);
+                        if (arrayMatch) {
+                            const fromIdx = arrayMatch.index;
+                            let bracketCount = 0, inStr = false, esc = false;
+                            for (let i = fromIdx; i < response.length; i++) {
+                                const c = response[i];
+                                if (esc) { esc = false; continue; }
+                                if (c === '\\') { esc = true; continue; }
+                                if (c === '"') { inStr = !inStr; continue; }
+                                if (!inStr) {
+                                    if (c === '[') bracketCount++;
+                                    if (c === ']') { bracketCount--; if (bracketCount === 0) { workoutJSON = response.substring(fromIdx, i + 1); break; } }
+                                }
+                            }
+                        }
+                    }
+                    // Fallback: try to find any JSON object with exercises array
+                    if (!workoutJSON) {
+                        const exercisesMatch = response.match(/\{\s*"exercises"\s*:/);
+                        if (exercisesMatch) {
+                            let braceCount = 0, inStr = false, esc = false;
+                            for (let i = exercisesMatch.index; i < response.length; i++) {
+                                const c = response[i];
+                                if (esc) { esc = false; continue; }
+                                if (c === '\\') { esc = true; continue; }
+                                if (c === '"') { inStr = !inStr; continue; }
+                                if (!inStr) {
+                                    if (c === '{') braceCount++;
+                                    if (c === '}') { braceCount--; if (braceCount === 0) { workoutJSON = response.substring(exercisesMatch.index, i + 1); break; } }
+                                }
+                            }
+                        }
+                    }
+                    
+                    const addExerciseJSON = extractJSONArray(response, 'ADD_EXERCISE_JSON:');
+                    let saveWorkoutJSON = extractJSON(response, 'SAVE_WORKOUT_JSON:');
+                    let startWorkoutJSON = extractJSON(response, 'START_WORKOUT_JSON:');
+
+                    // Handle ADD_EXERCISE_JSON first (before workout creation)
+                    if (addExerciseJSON) {
+                        try {
+                            const newExercises = JSON.parse(addExerciseJSON);
+                            setExercisesList(prev => {
+                                const updated = [...prev];
+                                newExercises.forEach(exName => {
+                                    if (!updated.includes(exName)) updated.push(exName);
+                                });
+                                return updated;
+                            });
+                        } catch (e) {
+                            console.error('Failed to parse ADD_EXERCISE_JSON:', e);
+                        }
+                    }
+
+                    // Convert flat exercise format to the app's expected format
+                    const normalizeExercises = (exArray) => {
+                        return exArray.map(ex => {
+                            // If already has sets array, use it
+                            if (ex.sets && Array.isArray(ex.sets)) {
+                                return ex;
+                            }
+                            // Flat format: { name, sets: number, reps: number, weight, rest }
+                            const numSets = parseInt(ex.sets) || 3;
+                            const flatSets = [];
+                            // Extract weight number (handle "225 lbs" or "225" or "N/A")
+                            let weightNum = parseInt(String(ex.weight).replace(/[^0-9]/g, '')) || 0;
+                            let restStr = ex.rest || "1:30";
+                            for (let i = 0; i < numSets; i++) {
+                                flatSets.push({
+                                    reps: parseInt(ex.reps) || 10,
+                                    weight: weightNum,
+                                    rest: restStr
+                                });
+                            }
+                            return { name: ex.name, sets: flatSets };
+                        });
+                    };
+
+                    // Handle WORKOUT_JSON — support multiple formats
+                    let finalWorkoutData = null;
+                    if (workoutJSON) {
+                        try {
+                            const raw = JSON.parse(workoutJSON);
+                            // Format 1: Array of exercises
+                            if (Array.isArray(raw)) {
+                                finalWorkoutData = normalizeExercises(raw);
+                            }
+                            // Format 2: Object with { exercises: [...] }
+                            else if (raw.exercises && Array.isArray(raw.exercises)) {
+                                finalWorkoutData = normalizeExercises(raw.exercises);
+                            }
+                            // Format 3: Single exercise object
+                            else if (raw.name) {
+                                finalWorkoutData = normalizeExercises([raw]);
+                            }
+                            if (finalWorkoutData && finalWorkoutData.length > 0) {
+                                setWorkout(finalWorkoutData);
+                                // Auto-add any new exercises not in the list to the dropdown
+                                finalWorkoutData.forEach(ex => {
+                                    if (!exercisesList.includes(ex.name)) {
+                                        setExercisesList(prev => prev.includes(ex.name) ? prev : [...prev, ex.name]);
+                                    }
+                                });
+                                // Navigate to create workout page so user can review before starting
+                                setCurrentExercise('');
+                                setWorkoutName('');
+                                setPage('createWorkout');
+                            }
+                        } catch (e) {
+                            console.error('Failed to parse WORKOUT_JSON:', e);
+                        }
+                    }
+
+                    // Handle SAVE_WORKOUT_JSON
+                    if (saveWorkoutJSON) {
+                        try {
+                            const saveData = JSON.parse(saveWorkoutJSON);
+                            const workoutToSave = (finalWorkoutData && finalWorkoutData.length > 0) ? finalWorkoutData : workout;
+                            const name = saveData.name || "Saved Workout";
+                            setWorkoutName(name);
+                            if (workoutToSave && workoutToSave.length > 0) {
+                                const newSaved = [...savedWorkouts, { name, workout: [...workoutToSave] }];
+                                setSavedWorkouts(newSaved);
+                                localStorage.setItem('savedWorkouts', JSON.stringify(newSaved));
+                                // Only go to saved page if this was a save-only request (no workout created)
+                                if (!finalWorkoutData || finalWorkoutData.length === 0) {
+                                    setPage('savedWorkouts');
+                                }
+                            }
+                        } catch (e) {
+                            console.error('Failed to parse SAVE_WORKOUT_JSON:', e);
+                        }
+                    }
+
+                    // Handle START_WORKOUT_JSON
+                    if (startWorkoutJSON) {
+                        try {
+                            const startData = JSON.parse(startWorkoutJSON);
+                            const nameMatch = startData.savedWorkoutName.toLowerCase();
+                            const found = savedWorkouts.find(w => w.name.toLowerCase().includes(nameMatch));
+                            if (found) {
+                                setWorkout(found.workout);
+                                // Navigate to workout page
+                                setTimeout(() => setPage('workout'), 100);
+                            }
+                        } catch (e) {
+                            console.error('Failed to parse START_WORKOUT_JSON:', e);
+                        }
+                    }
+
+                    // Clean display message - remove ALL JSON content
+                    let displayMessage = response;
+                    // Remove entire lines that contain JSON markers
+                    displayMessage = displayMessage.split('\n').filter(line => {
+                        const t = line.trim();
+                        if (t.startsWith('WORKOUT_JSON:')) return false;
+                        if (t.startsWith('SAVE_WORKOUT_JSON:')) return false;
+                        if (t.startsWith('START_WORKOUT_JSON:')) return false;
+                        if (t.startsWith('ADD_EXERCISE_JSON:')) return false;
+                        if (t.startsWith('{') && t.endsWith('}') && t.length > 5) return false;
+                        if (t.startsWith('[') && t.endsWith(']') && t.length > 5) return false;
+                        if (t.startsWith('```')) return false;
+                        return true;
+                    }).join('\n').trim();
+
+                    if (displayMessage) {
+                        const assistantMsg = { role: 'assistant', content: displayMessage, timestamp: Date.now() };
+                        setMessages(prev => [...prev, assistantMsg]);
+                    }
+                } catch (error) {
+                    console.error('AI Error:', error);
+                    setMessages(prev => [...prev, { 
+                        role: 'assistant', 
+                        content: `⚠️ Error: ${error.message || 'Failed to connect to AI. Make sure the server is running.'}`, 
+                        timestamp: Date.now() 
+                    }]);
+                }
+                setIsLoading(false);
+            };
+
+            const handleKeyDown = (e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSend();
+                }
+            };
+
+            return (
+                <>
+                    {/* Floating AI Button */}
+                    <button 
+                        className={`ai-toggle-btn ${isOpen ? 'open' : ''}`}
+                        onClick={() => { setIsOpen(!isOpen); if (!isOpen) setIsMinimized(false); }}
+                        title="AI Assistant"
+                    >
+                        {isOpen ? '✕' : '🤖'}
+                    </button>
+
+                    {/* Chat Panel */}
+                    {isOpen && (
+                        <div className={`ai-chat-panel ${isMinimized ? 'minimized' : ''}`}>
+                            <div className="ai-chat-header" onClick={() => setIsMinimized(!isMinimized)}>
+                                <h3>🤖 Fitness AI Coach</h3>
+                                <div>
+                                    <button onClick={(e) => { e.stopPropagation(); setIsMinimized(!isMinimized); }}>
+                                        {isMinimized ? '□' : '━'}
+                                    </button>
+                                </div>
+                            </div>
+
+                            {!isMinimized && (
+                                <>
+                                    <div className="ai-chat-messages">
+                                        {messages.length === 0 && !isLoading && (
+                                            <div className="ai-empty-state">
+                                                <div className="icon">💪</div>
+                                                <p>Ask me to create a workout, add exercises, save routines, or start a saved workout!</p>
+                                                <p className="text-xs mt-2 text-gray-400">Example: "Create a push day with Bench Press 4x8 at 185"</p>
+                                            </div>
+                                        )}
+                                        {messages.map((msg, i) => (
+                                            <div key={i} className={`ai-message ${msg.role}`}>
+                                                {msg.content.split('\n').map((line, j) => (
+                                                    <p key={j}>{line}</p>
+                                                ))}
+                                            </div>
+                                        ))}
+                                        {isLoading && (
+                                            <div className="ai-message assistant ai-loading">
+                                                <div className="dot"></div>
+                                                <div className="dot"></div>
+                                                <div className="dot"></div>
+                                            </div>
+                                        )}
+                                        <div ref={messagesEndRef} />
+                                    </div>
+
+                                    <div className="ai-chat-input-area">
+                                        <input 
+                                            ref={inputRef}
+                                            type="text" 
+                                            value={input}
+                                            onChange={(e) => setInput(e.target.value)}
+                                            onKeyDown={handleKeyDown}
+                                            placeholder="Ask about workouts..."
+                                            disabled={isLoading}
+                                        />
+                                        <button onClick={handleSend} disabled={isLoading || !input.trim()}>
+                                            ➤
+                                        </button>
+                                    </div>
+                                </>
+                            )}
+                        </div>
+                    )}
+                </>
+            );
+        };
+
         const App = () => {
             const [page, setPage] = useState('home');
             const [workout, setWorkout] = useState([]);
@@ -99,6 +679,8 @@
             const [liveWorkout, setLiveWorkout] = useState([]);
             const [timer, setTimer] = useState(0);
             const [isResting, setIsResting] = useState(false);
+            const [isDoingSet, setIsDoingSet] = useState(false);
+            const [setStopwatch, setSetStopwatch] = useState(0);
             const [savedWorkouts, setSavedWorkouts] = useState([]);
             const [workoutName, setWorkoutName] = useState('');
             const [exercisesList, setExercisesList] = useState(initialExercisesList);
@@ -116,8 +698,9 @@
                 frequentExercises: {}
             });
 
-            // Use the custom timer hook
-            useTimer(page, isResting, timer, setTimer, setIsResting);
+            // Use the custom timer hooks
+            useTimer(page, isResting, timer, setTimer);
+            useSetStopwatch(page, isDoingSet, setStopwatch, setSetStopwatch);
 
             useEffect(() => {
                 try {
@@ -132,7 +715,7 @@
                     }
                 } catch (error) {
                     console.error('Error loading data:', error);
-                    localStorage.clear(); // Clear corrupted data
+                    localStorage.clear();
                 }
             }, []);
 
@@ -148,13 +731,26 @@
                 }
             }, [savedWorkouts, user]);
 
+            // Save exercises list to localStorage
+            useEffect(() => {
+                localStorage.setItem('exercisesList', JSON.stringify(exercisesList));
+            }, [exercisesList]);
+
+            // Load exercises list from localStorage
+            useEffect(() => {
+                try {
+                    const stored = localStorage.getItem('exercisesList');
+                    if (stored) {
+                        setExercisesList(JSON.parse(stored));
+                    }
+                } catch {}
+            }, []);
+
             const handleLogin = () => {
-                // In a real app, you would validate credentials against a backend
                 const newUser = { username, password };
                 setUser(newUser);
                 localStorage.setItem('user', JSON.stringify(newUser));
                 
-                // Load user-specific data
                 const storedSavedWorkouts = localStorage.getItem(`savedWorkouts_${username}`);
                 if (storedSavedWorkouts) {
                     setSavedWorkouts(JSON.parse(storedSavedWorkouts));
@@ -170,7 +766,6 @@
             };
 
             const handleSignup = () => {
-                // In a real app, you would send this data to a backend
                 const newUser = { username, password };
                 setUser(newUser);
                 localStorage.setItem('user', JSON.stringify(newUser));
@@ -374,24 +969,16 @@
             };
 
             const saveWorkout = () => {
-                if (user) {
-                    const newSavedWorkouts = [...savedWorkouts, { name: workoutName, workout }];
-                    setSavedWorkouts(newSavedWorkouts);
-                    localStorage.setItem(`savedWorkouts_${user.username}`, JSON.stringify(newSavedWorkouts));
-                    setWorkoutName('');
-                    resetCreateWorkoutPage();
-                } else {
-                    alert('Please log in to save workouts');
-                }
+                const newSavedWorkouts = [...savedWorkouts, { name: workoutName, workout }];
+                setSavedWorkouts(newSavedWorkouts);
+                localStorage.setItem('savedWorkouts', JSON.stringify(newSavedWorkouts));
+                setWorkoutName('');
+                resetCreateWorkoutPage();
             };
 
             const loadWorkout = (savedWorkout) => {
-                if (user) {
-                    setWorkout(savedWorkout.workout);
-                    startWorkout();
-                } else {
-                    alert('Please log in to load workouts');
-                }
+                setWorkout(savedWorkout.workout);
+                startWorkout();
             };
 
             const editSavedWorkout = (index) => {
@@ -402,30 +989,24 @@
             };
 
             const updateWorkout = () => {
-                if (user) {
-                    const updatedSavedWorkouts = savedWorkouts.map(savedWorkout => 
-                        savedWorkout.name === workoutName ? { name: workoutName, workout } : savedWorkout
-                    );
-                    setSavedWorkouts(updatedSavedWorkouts);
-                    localStorage.setItem(`savedWorkouts_${user.username}`, JSON.stringify(updatedSavedWorkouts));
-                    setPage('savedWorkouts');
-                } else {
-                    alert('Please log in to update workouts');
-                }
+                const updatedSavedWorkouts = savedWorkouts.map(savedWorkout =>
+                    savedWorkout.name === workoutName ? { name: workoutName, workout } : savedWorkout
+                );
+                setSavedWorkouts(updatedSavedWorkouts);
+                localStorage.setItem('savedWorkouts', JSON.stringify(updatedSavedWorkouts));
+                setPage('savedWorkouts');
             };
 
             const deleteSavedWorkout = (index) => {
-                if (user) {
-                    const newSavedWorkouts = savedWorkouts.filter((_, i) => i !== index);
-                    setSavedWorkouts(newSavedWorkouts);
-                    localStorage.setItem(`savedWorkouts_${user.username}`, JSON.stringify(newSavedWorkouts));
-                }
+                const newSavedWorkouts = savedWorkouts.filter((_, i) => i !== index);
+                setSavedWorkouts(newSavedWorkouts);
+                localStorage.setItem('savedWorkouts', JSON.stringify(newSavedWorkouts));
             };
 
             const generateProgressData = () => {
                 const data = {};
                 history.forEach(entry => {
-                    if (!entry.date) return; // Skip if no date
+                    if (!entry.date) return;
                     
                     const date = new Date(entry.date).toLocaleDateString();
                     
@@ -471,7 +1052,6 @@
 
             useEffect(() => {
                 if (page === 'progress') {
-                    // Destroy existing charts first
                     Object.keys(progressData).forEach(exercise => {
                         const canvas = document.getElementById(`chart-${exercise}`);
                         const existingChart = Chart.getChart(canvas);
@@ -480,7 +1060,6 @@
                         }
                     });
 
-                    // Create new charts
                     Object.entries(progressData).forEach(([exercise, data]) => {
                         const ctx = document.getElementById(`chart-${exercise}`);
                         if (!ctx) return;
@@ -597,9 +1176,26 @@
                 setStatistics(stats);
             };
 
+            // Auto-advance when rest timer naturally ends (timer hits 0 during rest)
             useEffect(() => {
-                updateStatistics();
-            }, [history]);
+                if (page === 'workout' && isResting && timer === 0 && workout.length > 0) {
+                    // Advance to next set
+                    if (currentSetIndex < workout[currentExerciseIndex].sets.length - 1) {
+                        setCurrentSetIndex(currentSetIndex + 1);
+                    } else if (currentExerciseIndex < workout.length - 1) {
+                        setCurrentExerciseIndex(currentExerciseIndex + 1);
+                        setCurrentSetIndex(0);
+                    } else {
+                        finishWorkout();
+                        return;
+                    }
+                    // Auto-start the set timer
+                    setTimeout(() => {
+                        setIsDoingSet(true);
+                        setSetStopwatch(0);
+                    }, 100);
+                }
+            }, [page, isResting, timer]);
 
             const renderWorkoutForm = (onSubmit, submitButtonText) => (
                 <div>
@@ -641,7 +1237,7 @@
                                                 placeholder="0:00" 
                                                 value={set.rest} 
                                                 onChange={(e) => {
-                                                    let value = e.target.value.replace(/[^0-9]/g, ''); // Keep only numbers
+                                                    let value = e.target.value.replace(/[^0-9]/g, '');
                                                     
                                                     if (value) {
                                                         if (value.length <= 2) {
@@ -748,9 +1344,34 @@
                                     <p className="text-3xl mb-2">Reps: {workout[currentExerciseIndex].sets[currentSetIndex].reps}</p>
                                     <p className="text-3xl mb-2">Weight: {workout[currentExerciseIndex].sets[currentSetIndex].weight}</p>
                                     <p className="text-3xl mb-2">Rest: {workout[currentExerciseIndex].sets[currentSetIndex].rest}</p>
-                                    {isResting ? (
+                                    {isDoingSet ? (
                                         <div className="mb-4">
-                                            <h3 className="text-5xl font-bold">Rest Time: {formatTime(timer)}</h3>
+                                            <h3 className="text-5xl font-bold text-blue-600">Set Time: {formatTime(setStopwatch)}</h3>
+                                            <button 
+                                                onClick={() => {
+                                                    // Record set duration, then start rest timer
+                                                    const setDuration = setStopwatch;
+                                                    setIsDoingSet(false);
+                                                    setSetStopwatch(0);
+                                                    // Store duration in the set data
+                                                    const newWorkout = [...workout];
+                                                    const currentSet = { ...newWorkout[currentExerciseIndex].sets[currentSetIndex], duration: formatTime(setDuration) };
+                                                    newWorkout[currentExerciseIndex].sets[currentSetIndex] = currentSet;
+                                                    setWorkout(newWorkout);
+                                                    // Start rest timer
+                                                    const restTimeInSeconds = parseTime(currentSet.rest);
+                                                    setTimer(restTimeInSeconds);
+                                                    setIsResting(true);
+                                                }}
+                                                className="bg-green-500 text-white px-6 py-3 rounded text-xl mt-4"
+                                            >
+                                                Complete Set ⏱ {formatTime(setStopwatch)}
+                                            </button>
+                                        </div>
+                                    ) : isResting ? (
+                                        <div className="mb-4">
+                                            <h3 className="text-5xl font-bold text-orange-500">Rest: {formatTime(timer)}</h3>
+                                            <p className="text-lg mt-2 text-gray-500">Last set took {workout[currentExerciseIndex].sets[currentSetIndex].duration || '—'}</p>
                                             {(currentSetIndex + 1 < workout[currentExerciseIndex].sets.length) ? (
                                                 <div className="mt-4 p-4 bg-gray-100 rounded">
                                                     <h4 className="text-xl font-bold">Next Set:</h4>
@@ -765,10 +1386,39 @@
                                                     <p>Weight: {workout[currentExerciseIndex + 1].sets[0].weight}</p>
                                                 </div>
                                             ) : null}
-                                            <button onClick={nextSet} className="bg-green-500 text-white px-6 py-3 rounded text-xl mt-4">Next Set</button>
+                                            <button 
+                                                onClick={() => {
+                                                    setIsResting(false);
+                                                    setTimer(0);
+                                                    // Advance to next set but DO NOT auto-start
+                                                    if (currentSetIndex < workout[currentExerciseIndex].sets.length - 1) {
+                                                        setCurrentSetIndex(currentSetIndex + 1);
+                                                    } else if (currentExerciseIndex < workout.length - 1) {
+                                                        setCurrentExerciseIndex(currentExerciseIndex + 1);
+                                                        setCurrentSetIndex(0);
+                                                    } else {
+                                                        finishWorkout();
+                                                    }
+                                                }}
+                                                className="bg-green-500 text-white px-8 py-4 rounded text-xl font-bold"
+                                            >
+                                                Next Set →
+                                            </button>
                                         </div>
                                     ) : (
-                                        <button onClick={completeSet} className="bg-blue-500 text-white px-6 py-3 rounded text-xl">Complete Set</button>
+                                        <div className="mb-4">
+                                            <p className="text-lg text-gray-500 mb-4">Ready to begin this set?</p>
+                                            <button 
+                                                onClick={() => {
+                                                    setIsDoingSet(true);
+                                                    setSetStopwatch(0);
+                                                }}
+                                                className="bg-blue-500 text-white px-8 py-4 rounded text-xl font-bold"
+                                            >
+                                                Start Set
+                                            </button>
+                                            <p className="text-xs text-gray-400 mt-2">Timer counts up during your set</p>
+                                        </div>
                                     )}
                                 </div>
                             )}
@@ -865,6 +1515,7 @@
                                                 <p>Reps: {exercise.sets.map(set => set.reps).join(', ')}</p>
                                                 <p>Weight: {exercise.sets.map(set => set.weight).join(', ')}</p>
                                                 <p>Rest: {exercise.sets.map(set => set.rest).join(', ')}</p>
+                                                {exercise.sets[0].duration && <p>Duration per set: {exercise.sets.map(set => set.duration || '-').join(', ')}</p>}
                                             </div>
                                         ))
                                     ) : entry.liveWorkout && (
@@ -951,6 +1602,22 @@
                             </button>
                         </div>
                     )}
+
+                    {/* AI Chat Widget */}
+                    <AIChatWidget 
+                        exercisesList={exercisesList}
+                        setExercisesList={setExercisesList}
+                        workout={workout}
+                        setWorkout={setWorkout}
+                        workoutName={workoutName}
+                        setWorkoutName={setWorkoutName}
+                        savedWorkouts={savedWorkouts}
+                        setSavedWorkouts={setSavedWorkouts}
+                        setPage={setPage}
+                        resetCreateWorkoutPage={resetCreateWorkoutPage}
+                        startWorkout={startWorkout}
+                        user={user}
+                    />
                 </div>
             );
         };
@@ -958,4 +1625,4 @@
         ReactDOM.render(<App />, document.getElementById('root'));
     </script>
 </body>
-</html> 
+</html>
