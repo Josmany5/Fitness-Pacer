@@ -1,11 +1,28 @@
 exports.handler = async (event) => {
-  // Only allow POST
+  // Handle CORS preflight
+  if (event.httpMethod === 'OPTIONS') {
+    return {
+      statusCode: 200,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Headers': 'Content-Type',
+        'Access-Control-Allow-Methods': 'POST, OPTIONS'
+      }
+    };
+  }
+
   if (event.httpMethod !== 'POST') {
     return { statusCode: 405, body: JSON.stringify({ error: 'Method not allowed' }) };
   }
 
   try {
-    const { action, data } = JSON.parse(event.body);
+    // Netlify sometimes base64-encodes the body
+    const body = event.isBase64Encoded 
+      ? Buffer.from(event.body, 'base64').toString('utf8')
+      : event.body;
+
+    const parsed = JSON.parse(body);
+    const { action, data } = parsed;
 
     if (action !== 'chat') {
       return { statusCode: 400, body: JSON.stringify({ error: 'Unknown action' }) };
@@ -49,7 +66,11 @@ exports.handler = async (event) => {
 
     if (!response.ok) {
       const errorText = await response.text();
-      return { statusCode: 500, body: JSON.stringify({ error: `DeepSeek API error: ${errorText}` }) };
+      return {
+        statusCode: 500,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ error: `DeepSeek API error: ${errorText}` })
+      };
     }
 
     const result = await response.json();
@@ -57,13 +78,17 @@ exports.handler = async (event) => {
 
     return {
       statusCode: 200,
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*'
+      },
       body: JSON.stringify({ response: aiResponse })
     };
 
   } catch (error) {
     return {
       statusCode: 500,
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ error: error.message })
     };
   }
