@@ -376,12 +376,8 @@ The output markers run invisible. Never show JSON, code, or raw data in your cha
 
 ## WHAT YOU CAN DO
 
-You can create, save, start, load, or save-and-start workouts. Use these markers on their own line after your text:
-- WORKOUT_JSON: array of exercises with name, sets (reps, weight, rest) — fills the Create Workout page
-- SAVE_WORKOUT_JSON: {"name":"Name"} — saves workout. Always include braces around the name field.
-- START_WORKOUT_JSON: {"savedWorkoutName":"Name"} — loads a workout. Always include braces.
-
-Use multiple markers if needed (e.g., create and save in one response).
+Create AND automatically save a workout with one marker. Place it on its own line after your text:
+- WORKOUT_JSON: array of exercises with name, sets (reps, weight, rest) — creates the workout AND saves it to the Saved Workouts page. Optionally include a "workoutName" field at the top to name the workout (e.g., "Push Day A"). If you omit the name, the workout saves as "AI Workout".
 
 Current exercises:
 ${exList}`;
@@ -445,119 +441,54 @@ ${exList}`;
                         }
                     }
                     
-                    const addExerciseJSON = extractJSONArray(response, 'ADD_EXERCISE_JSON:');
-                    let saveWorkoutJSON = extractJSON(response, 'SAVE_WORKOUT_JSON:');
-                    let startWorkoutJSON = extractJSON(response, 'START_WORKOUT_JSON:');
-
-                    // Handle ADD_EXERCISE_JSON first (before workout creation)
-                    if (addExerciseJSON) {
-                        try {
-                            const newExercises = JSON.parse(addExerciseJSON);
-                            setExercisesList(prev => {
-                                const updated = [...prev];
-                                newExercises.forEach(exName => {
-                                    if (!updated.includes(exName)) updated.push(exName);
-                                });
-                                return updated;
-                            });
-                        } catch (e) {
-                            console.error('Failed to parse ADD_EXERCISE_JSON:', e);
-                        }
-                    }
-
-                    // Convert flat exercise format to the app's expected format
-                    const normalizeExercises = (exArray) => {
-                        return exArray.map(ex => {
-                            // If already has sets array, use it
-                            if (ex.sets && Array.isArray(ex.sets)) {
-                                return ex;
-                            }
-                            // Flat format: { name, sets: number, reps: number, weight, rest }
-                            const numSets = parseInt(ex.sets) || 3;
-                            const flatSets = [];
-                            // Extract weight number (handle "225 lbs" or "225" or "N/A")
-                            let weightNum = parseInt(String(ex.weight).replace(/[^0-9]/g, '')) || 0;
-                            let restStr = ex.rest || "1:30";
-                            for (let i = 0; i < numSets; i++) {
-                                flatSets.push({
-                                    reps: parseInt(ex.reps) || 10,
-                                    weight: weightNum,
-                                    rest: restStr
-                                });
-                            }
-                            return { name: ex.name, sets: flatSets };
-                        });
-                    };
-
-                    // Handle WORKOUT_JSON — support multiple formats
-                    let finalWorkoutData = null;
+                    // Handle WORKOUT_JSON — creates AND auto-saves
                     if (workoutJSON) {
                         try {
                             const raw = JSON.parse(workoutJSON);
-                            // Format 1: Array of exercises
+                            let parsedExercises = [];
                             if (Array.isArray(raw)) {
-                                finalWorkoutData = normalizeExercises(raw);
+                                parsedExercises = raw;
+                            } else if (raw.exercises && Array.isArray(raw.exercises)) {
+                                parsedExercises = raw.exercises;
+                            } else if (raw.name) {
+                                parsedExercises = [raw];
                             }
-                            // Format 2: Object with { exercises: [...] }
-                            else if (raw.exercises && Array.isArray(raw.exercises)) {
-                                finalWorkoutData = normalizeExercises(raw.exercises);
-                            }
-                            // Format 3: Single exercise object
-                            else if (raw.name) {
-                                finalWorkoutData = normalizeExercises([raw]);
-                            }
-                            if (finalWorkoutData && finalWorkoutData.length > 0) {
+                            
+                            const finalWorkoutData = parsedExercises.map(ex => {
+                                if (ex.sets && Array.isArray(ex.sets) && ex.sets.length > 0 && typeof ex.sets[0] === 'object') {
+                                    return ex;
+                                }
+                                const numSets = parseInt(ex.sets) || 3;
+                                const weightNum = parseInt(String(ex.weight || '0').replace(/[^0-9]/g, '')) || 0;
+                                const flatSets = Array.from({ length: numSets }, () => ({
+                                    reps: parseInt(ex.reps) || 10,
+                                    weight: weightNum,
+                                    rest: ex.rest || '1:30'
+                                }));
+                                return { name: ex.name, sets: flatSets };
+                            });
+                            
+                            if (finalWorkoutData.length > 0) {
+                                const workoutName = raw.workoutName || raw.name || null;
+                                const saveName = workoutName || 'AI Workout';
+                                
                                 setWorkout(finalWorkoutData);
-                                // Auto-add any new exercises not in the list to the dropdown
+                                setWorkoutName(saveName);
+                                
+                                // Auto-add new exercises to list
                                 finalWorkoutData.forEach(ex => {
                                     if (!exercisesList.includes(ex.name)) {
                                         setExercisesList(prev => prev.includes(ex.name) ? prev : [...prev, ex.name]);
                                     }
                                 });
-                                // Navigate to create workout page so user can review before starting
-                                setCurrentExercise('');
-                                setWorkoutName('');
-                                setPage('createWorkout');
+                                
+                                // Auto-save to saved workouts
+                                const newSaved = [...savedWorkouts, { name: saveName, workout: [...finalWorkoutData] }];
+                                setSavedWorkouts(newSaved);
+                                localStorage.setItem('savedWorkouts', JSON.stringify(newSaved));
                             }
                         } catch (e) {
                             console.error('Failed to parse WORKOUT_JSON:', e);
-                        }
-                    }
-
-                    // Handle SAVE_WORKOUT_JSON
-                    if (saveWorkoutJSON) {
-                        try {
-                            const saveData = JSON.parse(saveWorkoutJSON);
-                            const workoutToSave = (finalWorkoutData && finalWorkoutData.length > 0) ? finalWorkoutData : workout;
-                            const name = saveData.name || "Saved Workout";
-                            setWorkoutName(name);
-                            if (workoutToSave && workoutToSave.length > 0) {
-                                const newSaved = [...savedWorkouts, { name, workout: [...workoutToSave] }];
-                                setSavedWorkouts(newSaved);
-                                localStorage.setItem('savedWorkouts', JSON.stringify(newSaved));
-                                // Only go to saved page if this was a save-only request (no workout created)
-                                if (!finalWorkoutData || finalWorkoutData.length === 0) {
-                                    setPage('savedWorkouts');
-                                }
-                            }
-                        } catch (e) {
-                            console.error('Failed to parse SAVE_WORKOUT_JSON:', e);
-                        }
-                    }
-
-                    // Handle START_WORKOUT_JSON
-                    if (startWorkoutJSON) {
-                        try {
-                            const startData = JSON.parse(startWorkoutJSON);
-                            const nameMatch = startData.savedWorkoutName.toLowerCase();
-                            const found = savedWorkouts.find(w => w.name.toLowerCase().includes(nameMatch));
-                            if (found) {
-                                setWorkout(found.workout);
-                                // Navigate to workout page
-                                setTimeout(() => setPage('workout'), 100);
-                            }
-                        } catch (e) {
-                            console.error('Failed to parse START_WORKOUT_JSON:', e);
                         }
                     }
 
