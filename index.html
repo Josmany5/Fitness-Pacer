@@ -197,7 +197,7 @@
         ];
 
         // ===== AI SERVICE =====
-        const AI_API_URL = 'http://localhost:3002/api/ai';
+        const AI_API_URL = '/api/ai';
 
         const askGemini = async (systemPrompt, conversationHistory, userMessage) => {
             const response = await fetch(AI_API_URL, {
