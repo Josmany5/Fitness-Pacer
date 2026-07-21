@@ -1440,10 +1440,22 @@ ${exList}`;
                     const date = new Date(entry.date).toLocaleDateString();
                     if (entry.workout) {
                         entry.workout.forEach(exercise => {
-                            if (exercise.type === 'circuit' || !exercise.sets) return;
+                            if (exercise.type === 'circuit') {
+                                if (exercise.exercises) {
+                                    exercise.exercises.forEach(ex => {
+                                        if (!data[ex.name]) data[ex.name] = { dates: [], weights: [] };
+                                        const wt = parseInt(ex.weight) || 0;
+                                        data[ex.name].dates.push(date);
+                                        data[ex.name].weights.push(wt);
+                                    });
+                                }
+                                return;
+                            }
+                            if (!exercise.sets) return;
                             if (!data[exercise.name]) data[exercise.name] = { dates: [], weights: [] };
                             const maxWeight = Math.max(...exercise.sets.map(set => parseInt(set.weight) || 0));
-                            if (maxWeight > 0) { data[exercise.name].dates.push(date); data[exercise.name].weights.push(maxWeight); }
+                            data[exercise.name].dates.push(date);
+                            data[exercise.name].weights.push(maxWeight);
                         });
                     } else if (entry.liveWorkout) {
                         entry.liveWorkout.forEach(set => {
@@ -1553,7 +1565,16 @@ ${exList}`;
                 history.forEach(entry => {
                     if (entry.workout) {
                         entry.workout.forEach(exercise => {
-                            if (exercise.type === 'circuit' || !exercise.sets) return;
+                            if (exercise.type === 'circuit') {
+                                if (exercise.exercises) {
+                                    exercise.exercises.forEach(ex => {
+                                        const wt = parseInt(ex.weight) || 0;
+                                        if (!pbs[ex.name] || wt > pbs[ex.name]) pbs[ex.name] = wt;
+                                    });
+                                }
+                                return;
+                            }
+                            if (!exercise.sets) return;
                             const maxWeight = Math.max(...exercise.sets.map(set => parseInt(set.weight) || 0));
                             if (!pbs[exercise.name] || maxWeight > pbs[exercise.name]) pbs[exercise.name] = maxWeight;
                         });
@@ -1572,7 +1593,13 @@ ${exList}`;
                 const frequency = {};
                 history.forEach(entry => {
                     if (entry.workout) {
-                        entry.workout.forEach(exercise => { frequency[exercise.name] = (frequency[exercise.name] || 0) + 1; });
+                        entry.workout.forEach(exercise => {
+                            if (exercise.type === 'circuit' && exercise.exercises) {
+                                exercise.exercises.forEach(ex => { frequency[ex.name] = (frequency[ex.name] || 0) + 1; });
+                                return;
+                            }
+                            frequency[exercise.name] = (frequency[exercise.name] || 0) + 1;
+                        });
                     } else if (entry.liveWorkout) {
                         entry.liveWorkout.forEach(exercise => { frequency[exercise.exercise] = (frequency[exercise.exercise] || 0) + 1; });
                     }
