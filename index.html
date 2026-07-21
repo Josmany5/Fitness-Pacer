@@ -1457,7 +1457,7 @@ ${exList}`;
                 setProgressData(data);
             };
 
-            useEffect(() => { generateProgressData(); }, [history]);
+            useEffect(() => { generateProgressData(); updateStatistics(); }, [history]);
 
             useEffect(() => {
                 if (page === 'progress') {
