@@ -390,7 +390,7 @@
             font-family: var(--font-display); font-size: 63px; font-weight: 800;
             color: var(--crimson-neon); letter-spacing: 0.06em;
             text-shadow: 0 0 30px var(--crimson-glow), 0 0 60px rgba(255,0,85,0.3);
-            line-height: 1; animation: crFlash 0.8s ease-in-out infinite;
+             line-height: 1; animation: crFlash 0.8s ease-in-out infinite;
         }
         @keyframes crFlash {
             0%, 100% { opacity: 1; }
@@ -1169,7 +1169,7 @@ ${exList}`;
             const [actualRestTimes, setActualRestTimes] = useState({});
             const [historyOrder, setHistoryOrder] = useState('newest');
             const [originalWorkout, setOriginalWorkout] = useState(null);
-            const sortedHistory = historyOrder === 'newest' ? [...history].reverse() : [...history];
+            const sortedHistory = Array.isArray(history) ? (historyOrder === 'newest' ? [...history].reverse() : [...history]) : [];
 
             useTimer(page, isResting, timer, setTimer);
             useSetStopwatch(page, isDoingSet, setStopwatch, setSetStopwatch);
@@ -1351,7 +1351,7 @@ ${exList}`;
                 setActualRestTimes({});
                 setOriginalWorkout(null);
                 setTimer(0); setIsResting(false); setIsDoingSet(false); setSetStopwatch(0);
-                updateStatistics();
+                updateStatistics(newHistory);
             };
 
             const completeLiveSet = () => {
@@ -1997,8 +1997,14 @@ ${exList}`;
                             <div className="animate-in">
                                 <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'16px'}}>
                                     <h2 className="heading-lg" style={{marginBottom:0}}>HISTORY</h2>
-                                    <button onClick={() => setHistoryOrder(prev => prev === 'newest' ? 'oldest' : 'newest')} className="btn-cyber-sm" title="Toggle order">⇅</button>
+                                    <div style={{display:'flex',gap:'8px'}}>
+                                        <button onClick={() => { localStorage.removeItem('history'); setHistory([]); }} className="btn-cyber-sm" style={{fontSize:'9px',padding:'4px 10px'}} title="Clear all history">CLR</button>
+                                        <button onClick={() => setHistoryOrder(prev => prev === 'newest' ? 'oldest' : 'newest')} className="btn-cyber-sm" title="Toggle order">⇅</button>
+                                    </div>
                                 </div>
+                                {sortedHistory.length === 0 && (
+                                    <div style={{textAlign:'center',padding:'40px 20px',color:'rgba(200,214,229,0.3)',fontFamily:'var(--font-mono)',fontSize:'14px'}}>NO HISTORY YET — COMPLETE A WORKOUT</div>
+                                )}
                                 {sortedHistory.map((entry, index) => (
                                     <div key={index} className="cyber-panel-sm" style={{padding:'14px',marginBottom:'10px'}}>
                                         <h3 className="heading-sm mb-1">{new Date(entry.date).toLocaleString()}</h3>
