@@ -2006,7 +2006,7 @@ ${exList}`;
                                     <div style={{textAlign:'center',padding:'40px 20px',color:'rgba(200,214,229,0.3)',fontFamily:'var(--font-mono)',fontSize:'14px'}}>NO HISTORY YET — COMPLETE A WORKOUT</div>
                                 )}
                                 {sortedHistory.map((entry, index) => (
-                                    <div key={index} className="cyber-panel-sm" style={{padding:'14px',marginBottom:'10px'}}>
+                                    <div key={index} className="cyber-panel-sm" style={{padding:'10px',marginBottom:'8px'}}>
                                         <h3 className="heading-sm mb-1">{new Date(entry.date).toLocaleString()}</h3>
                                         {entry.workout && (
                                             <div className="mb-2">
@@ -2089,7 +2089,8 @@ ${exList}`;
                                                 <button onClick={() => { const cloned = JSON.parse(JSON.stringify(entry.workout)); setWorkout(cloned); startWorkout(); }} className="btn-cyber-accent" style={{fontSize:'11px',padding:'6px 14px'}}>LOAD & REPEAT</button>
                                             )}
                                             <button onClick={() => {
-                                                const newHistory = history.filter((_, i) => i !== index);
+                                                const entryDate = entry.date;
+                                                const newHistory = history.filter(h => String(h.date) !== String(entryDate));
                                                 setHistory(newHistory);
                                                 localStorage.setItem('history', JSON.stringify(newHistory));
                                             }} className="btn-cyber-danger" style={{fontSize:'11px',padding:'6px 14px'}}>DELETE</button>
