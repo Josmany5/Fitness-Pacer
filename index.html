@@ -1177,12 +1177,22 @@ ${exList}`;
             useEffect(() => {
                 try {
                     const storedHistory = localStorage.getItem('history');
-                    if (storedHistory) setHistory(JSON.parse(storedHistory));
+                    if (storedHistory) {
+                        const parsed = JSON.parse(storedHistory);
+                        if (Array.isArray(parsed)) setHistory(parsed);
+                        else { localStorage.removeItem('history'); setHistory([]); }
+                    }
                     const storedWorkouts = localStorage.getItem('savedWorkouts');
-                    if (storedWorkouts) setSavedWorkouts(JSON.parse(storedWorkouts));
+                    if (storedWorkouts) {
+                        const parsed = JSON.parse(storedWorkouts);
+                        if (Array.isArray(parsed)) setSavedWorkouts(parsed);
+                        else { localStorage.removeItem('savedWorkouts'); setSavedWorkouts([]); }
+                    }
                 } catch (error) {
                     console.error('Error loading data:', error);
-                    localStorage.clear();
+                    try { localStorage.removeItem('history'); localStorage.removeItem('savedWorkouts'); } catch(e) {}
+                    setHistory([]);
+                    setSavedWorkouts([]);
                 }
             }, []);
 
