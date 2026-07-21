@@ -3,6 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <title>Fitness Pacer // NEURAL ENGINE</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css"></link>
@@ -1744,6 +1747,13 @@ ${exList}`;
                                 <div style={{fontSize:'40px',marginBottom:'12px',marginTop:'10px'}}>⚡</div>
                                 <h1 className="heading-xl mb-2">FITNESS PACER</h1>
                                 <p className="text-muted mb-8">TRACK WITH PRECISION</p>
+                                <button 
+                                    onClick={() => { localStorage.clear(); window.location.reload(); }}
+                                    className="btn-cyber-danger"
+                                    style={{fontSize:'11px',padding:'8px 16px',marginBottom:'12px',width:'100%'}}
+                                >
+                                    🔧 RESET APP DATA
+                                </button>
                                 <div className="flex flex-col space-y-3 max-w-xs mx-auto">
                                     <button onClick={() => { setPage('createWorkout'); resetCreateWorkoutPage(); }} className="btn-cyber-accent">CREATE WORKOUT</button>
                                     <button onClick={() => setPage('liveWorkout')} className="btn-cyber">LIVE WORKOUT</button>
