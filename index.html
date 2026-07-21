@@ -1851,7 +1851,7 @@ ${exList}`;
                                                         }} className="btn-cyber-danger" style={{fontSize:'10px',padding:'4px 10px'}}>- SET</button>
                                                     )}
                                                 </div>
-                                                <div style={{display:'inline-flex',gap:'12px',marginBottom:'16px'}}>
+                                                <div style={{display:'inline-flex',gap:'12px',marginBottom:'12px'}}>
                                                     <div className="cyber-panel-sm" style={{padding:'12px 18px'}}>
                                                         <div className="label-cyber" style={{color:'var(--cyan-neon)',textShadow:'0 0 6px var(--cyan-glow)'}}>REPS</div>
                                                         <div className="stat-value-cyber">
@@ -1865,19 +1865,17 @@ ${exList}`;
                                                             <span style={{fontSize:'14px',fontWeight:400,color:'var(--silver-mid)'}}> LBS</span>
                                                         </div>
                                                     </div>
-                                                    <div className="cyber-panel-sm" style={{padding:'12px 18px'}}>
-                                                        <div className="label-cyber" style={{color:'var(--cyan-neon)',textShadow:'0 0 6px var(--cyan-glow)'}}>REST</div>
-                                                        <div className="stat-value-cyber" style={{fontSize:'1.2rem'}}>
-                                                            <input type="text" value={workout[currentExerciseIndex].sets[currentSetIndex].rest} onChange={(e) => {
-                                                                let value = e.target.value.replace(/[^0-9]/g, '');
-                                                                if (value) {
-                                                                    if (value.length <= 2) value = `0:${value.padStart(2, '0')}`;
-                                                                    else { const mins = parseInt(value.slice(0, -2)); const secs = value.slice(-2); value = `${mins}:${secs}`; }
-                                                                }
-                                                                handleSetChange(currentExerciseIndex, currentSetIndex, 'rest', value);
-                                                            }} style={{background:'transparent',border:'none',outline:'none',fontFamily:'var(--font-display)',fontSize:'1.2rem',fontWeight:700,color:'#fff',width:'60px',textAlign:'center',textShadow:'0 0 12px var(--cyan-glow)'}} />
-                                                        </div>
-                                                    </div>
+                                                </div>
+                                                <div style={{marginBottom:'16px'}}>
+                                                    <span className="label-cyber" style={{color:'var(--cyan-neon)',textShadow:'0 0 6px var(--cyan-glow)'}}>REST</span>
+                                                    <input type="text" value={workout[currentExerciseIndex].sets[currentSetIndex].rest} onChange={(e) => {
+                                                        let value = e.target.value.replace(/[^0-9]/g, '');
+                                                        if (value) {
+                                                            if (value.length <= 2) value = `0:${value.padStart(2, '0')}`;
+                                                            else { const mins = parseInt(value.slice(0, -2)); const secs = value.slice(-2); value = `${mins}:${secs}`; }
+                                                        }
+                                                        handleSetChange(currentExerciseIndex, currentSetIndex, 'rest', value);
+                                                    }} style={{background:'transparent',border:'none',outline:'none',fontFamily:'var(--font-display)',fontSize:'1.2rem',fontWeight:700,color:'#fff',width:'60px',textAlign:'center',textShadow:'0 0 12px var(--cyan-glow)',marginLeft:'8px'}} />
                                                 </div>
                                                 {isDoingSet ? (
                                                     <div>
