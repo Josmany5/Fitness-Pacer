@@ -266,7 +266,9 @@
 
         const parseTime = (timeString) => {
             try {
-                const [minutes, seconds] = timeString.split(':').map(Number);
+                const s = String(timeString || '0');
+                if (!s.includes(':')) return parseInt(s) || 0;
+                const [minutes, seconds] = s.split(':').map(Number);
                 if (isNaN(minutes) || isNaN(seconds) || seconds >= 60) {
                     throw new Error('Invalid time format');
                 }
@@ -632,6 +634,11 @@ ${exList}`;
             const [isResting, setIsResting] = useState(false);
             const [isDoingSet, setIsDoingSet] = useState(false);
             const [setStopwatch, setSetStopwatch] = useState(0);
+            // Circuit execution state
+            const [inCircuit, setInCircuit] = useState(false);
+            const [circuitRound, setCircuitRound] = useState(1);
+            const [circuitExIdx, setCircuitExIdx] = useState(0);
+            const [circuitDurations, setCircuitDurations] = useState([]);
             const [savedWorkouts, setSavedWorkouts] = useState([]);
             const [workoutName, setWorkoutName] = useState('');
             const [exercisesList, setExercisesList] = useState(initialExercisesList);
@@ -747,6 +754,65 @@ ${exList}`;
                     setExercisesList([...exercisesList, currentExercise]);
                     addExercise();
                 }
+            };
+
+            const deleteCustomExercise = (exName) => {
+                if (!initialExercisesList.includes(exName)) {
+                    const updated = exercisesList.filter(e => e !== exName);
+                    setExercisesList(updated);
+                    localStorage.setItem('exercisesList', JSON.stringify(updated));
+                }
+            };
+
+            // Circuit building state
+            const [circuitExercises, setCircuitExercises] = useState([]);
+            const [circuitName, setCircuitName] = useState('');
+            const [circuitRounds, setCircuitRounds] = useState(3);
+            const [circuitRest, setCircuitRest] = useState('1:00');
+            const [showCircuitBuilder, setShowCircuitBuilder] = useState(false);
+            const [circuitExName, setCircuitExName] = useState('');
+            const [circuitExReps, setCircuitExReps] = useState(10);
+            const [circuitExWeight, setCircuitExWeight] = useState(0);
+
+            const addCircuitExerciseToBuilder = () => {
+                if (circuitExName) {
+                    setCircuitExercises([...circuitExercises, { name: circuitExName, reps: circuitExReps, weight: circuitExWeight }]);
+                    setCircuitExName('');
+                    setCircuitExReps(10);
+                    setCircuitExWeight(0);
+                }
+            };
+
+            const removeCircuitExerciseFromBuilder = (idx) => {
+                setCircuitExercises(circuitExercises.filter((_, i) => i !== idx));
+            };
+
+            const addCircuit = () => {
+                if (circuitExercises.length > 0) {
+                    const circuitEntry = {
+                        type: 'circuit',
+                        name: circuitName || 'Circuit',
+                        rounds: circuitRounds,
+                        restBetweenRounds: circuitRest,
+                        exercises: [...circuitExercises]
+                    };
+                    setWorkout([...workout, circuitEntry]);
+                    // Auto-add exercises to list
+                    circuitExercises.forEach(ex => {
+                        if (!exercisesList.includes(ex.name)) {
+                            setExercisesList(prev => [...prev, ex.name]);
+                        }
+                    });
+                    setCircuitExercises([]);
+                    setCircuitName('');
+                    setCircuitRounds(3);
+                    setCircuitRest('1:00');
+                    setShowCircuitBuilder(false);
+                }
+            };
+
+            const removeCircuit = (index) => {
+                setWorkout(workout.filter((_, i) => i !== index));
             };
 
             const addSet = (exerciseIndex, numberOfSets = 1) => {
@@ -963,6 +1029,8 @@ ${exList}`;
                     
                     if (entry.workout) {
                         entry.workout.forEach(exercise => {
+                            if (exercise.type === 'circuit') return;
+                            if (!exercise.sets) return;
                             if (!data[exercise.name]) {
                                 data[exercise.name] = {
                                     dates: [],
@@ -1062,9 +1130,15 @@ ${exList}`;
                 let volume = 0;
                 if (workoutData.workout) {
                     workoutData.workout.forEach(exercise => {
-                        exercise.sets.forEach(set => {
-                            volume += (parseInt(set.reps) || 0) * (parseInt(set.weight) || 0);
-                        });
+                        if (exercise.type === 'circuit') {
+                            exercise.exercises.forEach(ex => {
+                                volume += (parseInt(ex.reps) || 0) * (parseInt(ex.weight) || 0);
+                            });
+                        } else if (exercise.sets) {
+                            exercise.sets.forEach(set => {
+                                volume += (parseInt(set.reps) || 0) * (parseInt(set.weight) || 0);
+                            });
+                        }
                     });
                 } else if (workoutData.liveWorkout) {
                     workoutData.liveWorkout.forEach(exercise => {
@@ -1083,6 +1157,7 @@ ${exList}`;
                 history.forEach(entry => {
                     if (entry.workout) {
                         entry.workout.forEach(exercise => {
+                            if (exercise.type === 'circuit' || !exercise.sets) return;
                             const maxWeight = Math.max(...exercise.sets.map(set => parseInt(set.weight) || 0));
                             if (!pbs[exercise.name] || maxWeight > pbs[exercise.name]) {
                                 pbs[exercise.name] = maxWeight;
@@ -1130,8 +1205,11 @@ ${exList}`;
             // Auto-advance when rest timer naturally ends (timer hits 0 during rest)
             useEffect(() => {
                 if (page === 'workout' && isResting && timer === 0 && workout.length > 0) {
-                    // Advance to next set
-                    if (currentSetIndex < workout[currentExerciseIndex].sets.length - 1) {
+                    const current = workout[currentExerciseIndex];
+                    if (!current) return;
+                    // Skip circuits in auto-advance (they handle their own timing)
+                    if (current.type === 'circuit') return;
+                    if (current.sets && currentSetIndex < current.sets.length - 1) {
                         setCurrentSetIndex(currentSetIndex + 1);
                     } else if (currentExerciseIndex < workout.length - 1) {
                         setCurrentExerciseIndex(currentExerciseIndex + 1);
@@ -1140,7 +1218,6 @@ ${exList}`;
                         finishWorkout();
                         return;
                     }
-                    // Auto-start the set timer
                     setTimeout(() => {
                         setIsDoingSet(true);
                         setSetStopwatch(0);
@@ -1160,69 +1237,146 @@ ${exList}`;
                             ))}
                         </select>
                         <input type="text" placeholder="Or enter custom exercise" className="border p-2 rounded w-full mt-2" value={currentExercise} onChange={(e) => setCurrentExercise(e.target.value)} />
-                        <div className="flex space-x-2 mt-2">
+                        <div className="flex flex-wrap gap-2 mt-2">
                             <button onClick={addExercise} className="bg-blue-500 text-white px-4 py-2 rounded">Add Exercise</button>
                             <button onClick={addCustomExercise} className="bg-green-500 text-white px-4 py-2 rounded">Add Custom Exercise</button>
+                            <button onClick={() => setShowCircuitBuilder(!showCircuitBuilder)} className="bg-purple-500 text-white px-4 py-2 rounded">Add Circuit</button>
                         </div>
+                        {/* Exercise list with delete buttons */}
+                        <div className="mt-2 flex flex-wrap gap-1">
+                            {exercisesList.filter(ex => !initialExercisesList.includes(ex)).map(ex => (
+                                <span key={ex} className="bg-gray-200 px-2 py-1 rounded text-sm flex items-center gap-1">
+                                    {ex}
+                                    <button onClick={(e) => { e.stopPropagation(); deleteCustomExercise(ex); }} className="text-red-500 hover:text-red-700 font-bold">&times;</button>
+                                </span>
+                            ))}
+                        </div>
+                        {/* Circuit Builder Panel */}
+                        {showCircuitBuilder && (
+                            <div className="mt-3 p-3 bg-purple-50 border border-purple-200 rounded">
+                                <h4 className="font-bold mb-2 text-purple-800">Build Circuit</h4>
+                                <div className="mb-2">
+                                    <label className="block text-sm">Circuit Name</label>
+                                    <input type="text" placeholder="Circuit name" value={circuitName} onChange={(e) => setCircuitName(e.target.value)} className="border p-1 rounded w-full text-sm" />
+                                </div>
+                                <div className="flex gap-2 mb-2">
+                                    <div className="w-1/2">
+                                        <label className="block text-sm">Rounds</label>
+                                        <input type="number" min="1" value={circuitRounds} onChange={(e) => setCircuitRounds(Math.max(1, parseInt(e.target.value) || 1))} className="border p-1 rounded w-full text-sm" />
+                                    </div>
+                                    <div className="w-1/2">
+                                        <label className="block text-sm">Rest Between Rounds</label>
+                                        <input type="text" placeholder="1:00" value={circuitRest} onChange={(e) => setCircuitRest(e.target.value)} className="border p-1 rounded w-full text-sm" />
+                                    </div>
+                                </div>
+                                <div className="mb-2">
+                                    <label className="block text-sm font-medium mb-1">Add Exercise to Circuit</label>
+                                    <select value={circuitExName} onChange={(e) => setCircuitExName(e.target.value)} className="border p-1 rounded w-full text-sm mb-1">
+                                        <option value="">Select exercise...</option>
+                                        {exercisesList.map((ex, i) => (
+                                            <option key={i} value={ex}>{ex}</option>
+                                        ))}
+                                    </select>
+                                    <input type="text" placeholder="Or type custom exercise" value={circuitExName && !exercisesList.includes(circuitExName) ? circuitExName : ''} onChange={(e) => setCircuitExName(e.target.value)} className="border p-1 rounded w-full text-sm mb-1" />
+                                    <div className="flex gap-2 items-end">
+                                        <div className="flex-1">
+                                            <label className="block text-xs text-gray-500">Reps</label>
+                                            <input type="number" placeholder="10" value={circuitExReps} onChange={(e) => setCircuitExReps(parseInt(e.target.value) || 0)} className="border p-1 rounded w-full text-sm" />
+                                        </div>
+                                        <div className="flex-1">
+                                            <label className="block text-xs text-gray-500">Weight (lbs)</label>
+                                            <input type="number" placeholder="0" value={circuitExWeight} onChange={(e) => setCircuitExWeight(parseInt(e.target.value) || 0)} className="border p-1 rounded w-full text-sm" />
+                                        </div>
+                                        <button onClick={addCircuitExerciseToBuilder} className="bg-green-500 text-white px-3 py-1 rounded text-sm h-8">+ Add</button>
+                                    </div>
+                                </div>
+                                {circuitExercises.length > 0 && (
+                                    <div className="mb-2">
+                                        <label className="block text-sm font-bold">Circuit Exercises:</label>
+                                        {circuitExercises.map((ex, i) => (
+                                            <div key={i} className="flex justify-between items-center text-sm bg-white p-1 rounded mb-1">
+                                                <span>{ex.name} — {ex.reps} reps @ {ex.weight} lbs</span>
+                                                <button onClick={() => removeCircuitExerciseFromBuilder(i)} className="text-red-500 text-xs">&times;</button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                                <button onClick={addCircuit} disabled={circuitExercises.length === 0} className="bg-purple-500 text-white px-4 py-1 rounded text-sm">Add to Workout</button>
+                            </div>
+                        )}
                     </div>
                     {workout.map((exercise, exerciseIndex) => (
-                        <div key={exerciseIndex} className="mb-4">
-                            <h3 className="font-bold">{exercise.name}</h3>
-                            <MultiSetAdder exerciseIndex={exerciseIndex} addSet={addSet} />
-                            {exercise.sets.map((set, setIndex) => (
-                                <div key={setIndex} className="mb-4">
-                                    <h4 className="font-bold">Set {setIndex + 1}</h4>
-                                    <div className="flex space-x-2">
-                                        <div className="w-1/4">
-                                            <label className="block mb-1">Reps</label>
-                                            <input type="number" placeholder="Reps" value={set.reps} onChange={(e) => handleSetChange(exerciseIndex, setIndex, 'reps', e.target.value)} className="border p-2 rounded w-full" />
-                                        </div>
-                                        <div className="w-1/4">
-                                            <label className="block mb-1">Weight</label>
-                                            <input type="number" placeholder="Weight" value={set.weight} onChange={(e) => handleSetChange(exerciseIndex, setIndex, 'weight', e.target.value)} className="border p-2 rounded w-full" />
-                                        </div>
-                                        <div className="w-1/4">
-                                            <label className="block mb-1">Rest Time (mm:ss)</label>
-                                            <input 
-                                                type="text" 
-                                                placeholder="0:00" 
-                                                value={set.rest} 
-                                                onChange={(e) => {
-                                                    let value = e.target.value.replace(/[^0-9]/g, '');
-                                                    
-                                                    if (value) {
-                                                        if (value.length <= 2) {
-                                                            value = `0:${value.padStart(2, '0')}`;
-                                                        } else {
-                                                            const mins = parseInt(value.slice(0, -2));
-                                                            const secs = value.slice(-2);
-                                                            value = `${mins}:${secs}`;
-                                                        }
-                                                    }
-                                                    
-                                                    handleSetChange(exerciseIndex, setIndex, 'rest', value);
-                                                }} 
-                                                className="border p-2 rounded w-full" 
-                                            />
-                                        </div>
-                                    </div>
-                                    {setIndex === 0 && (
-                                        <button 
-                                            onClick={() => {
-                                                const newWorkout = [...workout];
-                                                newWorkout[exerciseIndex].sets = newWorkout[exerciseIndex].sets.map(s => ({...set}));
-                                                setWorkout(newWorkout);
-                                            }}
-                                            className="bg-green-500 text-white px-2 py-1 rounded mt-2 mr-2"
-                                        >
-                                            Apply to All
-                                        </button>
-                                    )}
-                                    <button onClick={() => removeSet(exerciseIndex, setIndex)} className="bg-red-500 text-white px-2 py-1 rounded mt-2">Remove Set</button>
+                        exercise.type === 'circuit' ? (
+                            <div key={exerciseIndex} className="mb-4 p-3 bg-purple-50 border border-purple-200 rounded">
+                                <div className="flex justify-between items-center">
+                                    <h3 className="font-bold text-purple-800">🔄 {exercise.name} ({exercise.rounds} rounds, rest {exercise.restBetweenRounds})</h3>
+                                    <button onClick={() => removeCircuit(exerciseIndex)} className="bg-red-500 text-white px-2 py-1 rounded text-sm">Remove</button>
                                 </div>
-                            ))}
-                            <button onClick={() => removeExercise(exerciseIndex)} className="bg-red-500 text-white px-4 py-2 rounded">Remove Exercise</button>
-                        </div>
+                                {exercise.exercises.map((ex, i) => (
+                                    <div key={i} className="ml-2 mt-1 text-sm">
+                                        <span className="font-medium">{ex.name}</span>: {ex.reps} reps @ {ex.weight} lbs
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <div key={exerciseIndex} className="mb-4">
+                                <h3 className="font-bold">{exercise.name}</h3>
+                                <MultiSetAdder exerciseIndex={exerciseIndex} addSet={addSet} />
+                                {exercise.sets.map((set, setIndex) => (
+                                    <div key={setIndex} className="mb-4">
+                                        <h4 className="font-bold">Set {setIndex + 1}</h4>
+                                        <div className="flex space-x-2">
+                                            <div className="w-1/4">
+                                                <label className="block mb-1">Reps</label>
+                                                <input type="number" placeholder="Reps" value={set.reps} onChange={(e) => handleSetChange(exerciseIndex, setIndex, 'reps', e.target.value)} className="border p-2 rounded w-full" />
+                                            </div>
+                                            <div className="w-1/4">
+                                                <label className="block mb-1">Weight</label>
+                                                <input type="number" placeholder="Weight" value={set.weight} onChange={(e) => handleSetChange(exerciseIndex, setIndex, 'weight', e.target.value)} className="border p-2 rounded w-full" />
+                                            </div>
+                                            <div className="w-1/4">
+                                                <label className="block mb-1">Rest Time (mm:ss)</label>
+                                                <input 
+                                                    type="text" 
+                                                    placeholder="0:00" 
+                                                    value={set.rest} 
+                                                    onChange={(e) => {
+                                                        let value = e.target.value.replace(/[^0-9]/g, '');
+                                                        
+                                                        if (value) {
+                                                            if (value.length <= 2) {
+                                                                value = `0:${value.padStart(2, '0')}`;
+                                                            } else {
+                                                                const mins = parseInt(value.slice(0, -2));
+                                                                const secs = value.slice(-2);
+                                                                value = `${mins}:${secs}`;
+                                                            }
+                                                        }
+                                                        
+                                                        handleSetChange(exerciseIndex, setIndex, 'rest', value);
+                                                    }} 
+                                                    className="border p-2 rounded w-full" 
+                                                />
+                                            </div>
+                                        </div>
+                                        {setIndex === 0 && (
+                                            <button 
+                                                onClick={() => {
+                                                    const newWorkout = [...workout];
+                                                    newWorkout[exerciseIndex].sets = newWorkout[exerciseIndex].sets.map(s => ({...set}));
+                                                    setWorkout(newWorkout);
+                                                }}
+                                                className="bg-green-500 text-white px-2 py-1 rounded mt-2 mr-2"
+                                            >
+                                                Apply to All
+                                            </button>
+                                        )}
+                                        <button onClick={() => removeSet(exerciseIndex, setIndex)} className="bg-red-500 text-white px-2 py-1 rounded mt-2">Remove Set</button>
+                                    </div>
+                                ))}
+                                <button onClick={() => removeExercise(exerciseIndex)} className="bg-red-500 text-white px-4 py-2 rounded">Remove Exercise</button>
+                            </div>
+                        )
                     ))}
                     <div className="mb-4">
                         <input type="text" placeholder="Workout Name" className="border p-2 rounded w-full mt-2" value={workoutName} onChange={(e) => setWorkoutName(e.target.value)} />
@@ -1290,85 +1444,174 @@ ${exList}`;
                             <h2 className="text-2xl font-bold mb-4">Workout</h2>
                             {workout.length > 0 && (
                                 <div className="mb-8">
-                                    <h3 className="text-4xl font-bold mb-4">{workout[currentExerciseIndex].name}</h3>
-                                    <h4 className="text-2xl font-bold mb-2">Set {currentSetIndex + 1} of {workout[currentExerciseIndex].sets.length}</h4>
-                                    <p className="text-3xl mb-2">Reps: {workout[currentExerciseIndex].sets[currentSetIndex].reps}</p>
-                                    <p className="text-3xl mb-2">Weight: {workout[currentExerciseIndex].sets[currentSetIndex].weight}</p>
-                                    <p className="text-3xl mb-2">Rest: {workout[currentExerciseIndex].sets[currentSetIndex].rest}</p>
-                                    {isDoingSet ? (
-                                        <div className="mb-4">
-                                            <h3 className="text-5xl font-bold text-blue-600">Set Time: {formatTime(setStopwatch)}</h3>
-                                            <button 
-                                                onClick={() => {
-                                                    // Record set duration, then start rest timer
-                                                    const setDuration = setStopwatch;
-                                                    setIsDoingSet(false);
-                                                    setSetStopwatch(0);
-                                                    // Store duration in the set data
-                                                    const newWorkout = [...workout];
-                                                    const currentSet = { ...newWorkout[currentExerciseIndex].sets[currentSetIndex], duration: formatTime(setDuration) };
-                                                    newWorkout[currentExerciseIndex].sets[currentSetIndex] = currentSet;
-                                                    setWorkout(newWorkout);
-                                                    // Start rest timer
-                                                    const restTimeInSeconds = parseTime(currentSet.rest);
-                                                    setTimer(restTimeInSeconds);
-                                                    setIsResting(true);
-                                                }}
-                                                className="bg-green-500 text-white px-6 py-3 rounded text-xl mt-4"
-                                            >
-                                                Complete Set ⏱ {formatTime(setStopwatch)}
-                                            </button>
-                                        </div>
-                                    ) : isResting ? (
-                                        <div className="mb-4">
-                                            <h3 className="text-5xl font-bold text-orange-500">Rest: {formatTime(timer)}</h3>
-                                            <p className="text-lg mt-2 text-gray-500">Last set took {workout[currentExerciseIndex].sets[currentSetIndex].duration || '—'}</p>
-                                            {(currentSetIndex + 1 < workout[currentExerciseIndex].sets.length) ? (
-                                                <div className="mt-4 p-4 bg-gray-100 rounded">
-                                                    <h4 className="text-xl font-bold">Next Set:</h4>
-                                                    <p>Reps: {workout[currentExerciseIndex].sets[currentSetIndex + 1].reps}</p>
-                                                    <p>Weight: {workout[currentExerciseIndex].sets[currentSetIndex + 1].weight}</p>
+                                    {workout[currentExerciseIndex]?.type === 'circuit' ? (
+                                        /* ===== CIRCUIT EXECUTION ===== */
+                                        <div>
+                                            <h3 className="text-3xl font-bold mb-2 text-purple-700">🔄 {workout[currentExerciseIndex].name}</h3>
+                                            <h4 className="text-xl font-bold mb-4">Round {circuitRound} of {workout[currentExerciseIndex].rounds}</h4>
+                                            {!isResting && !isDoingSet && (
+                                                <div className="mb-4">
+                                                    <p className="text-lg mb-2">Exercise {circuitExIdx + 1} of {workout[currentExerciseIndex].exercises.length}</p>
+                                                    <p className="text-3xl font-bold">{workout[currentExerciseIndex].exercises[circuitExIdx].name}</p>
+                                                    <p className="text-2xl">Reps: {workout[currentExerciseIndex].exercises[circuitExIdx].reps}</p>
+                                                    <p className="text-2xl mb-4">Weight: {workout[currentExerciseIndex].exercises[circuitExIdx].weight} lbs</p>
+                                                    <button 
+                                                        onClick={() => { setIsDoingSet(true); setSetStopwatch(0); }}
+                                                        className="bg-blue-500 text-white px-8 py-4 rounded text-xl font-bold"
+                                                    >
+                                                        Start Set
+                                                    </button>
                                                 </div>
-                                            ) : (currentExerciseIndex + 1 < workout.length) ? (
-                                                <div className="mt-4 p-4 bg-gray-100 rounded">
-                                                    <h4 className="text-xl font-bold">Next Exercise:</h4>
-                                                    <p>{workout[currentExerciseIndex + 1].name}</p>
-                                                    <p>Reps: {workout[currentExerciseIndex + 1].sets[0].reps}</p>
-                                                    <p>Weight: {workout[currentExerciseIndex + 1].sets[0].weight}</p>
+                                            )}
+                                            {isDoingSet && (
+                                                <div className="mb-4">
+                                                    <h3 className="text-5xl font-bold text-blue-600">Set Time: {formatTime(setStopwatch)}</h3>
+                                                    <button 
+                                                        onClick={() => {
+                                                            const dur = formatTime(setStopwatch);
+                                                            setCircuitDurations([...circuitDurations, { exercise: workout[currentExerciseIndex].exercises[circuitExIdx].name, duration: dur }]);
+                                                            // Store duration on the circuit exercise
+                                                            const updatedWorkout = [...workout];
+                                                            const circ = updatedWorkout[currentExerciseIndex];
+                                                            if (!circ.completedRounds) circ.completedRounds = [];
+                                                            if (!circ.completedRounds[circuitRound - 1]) circ.completedRounds[circuitRound - 1] = { exercises: [] };
+                                                            circ.completedRounds[circuitRound - 1].exercises.push({
+                                                                name: circ.exercises[circuitExIdx].name,
+                                                                reps: circ.exercises[circuitExIdx].reps,
+                                                                weight: circ.exercises[circuitExIdx].weight,
+                                                                duration: dur
+                                                            });
+                                                            setWorkout(updatedWorkout);
+                                                            setCircuitDurations([...circuitDurations, { exercise: workout[currentExerciseIndex].exercises[circuitExIdx].name, duration: dur }]);
+                                                            setIsDoingSet(false);
+                                                            setSetStopwatch(0);
+                                                            // Advance to next exercise or rest
+                                                            if (circuitExIdx < workout[currentExerciseIndex].exercises.length - 1) {
+                                                                setCircuitExIdx(circuitExIdx + 1);
+                                                            } else {
+                                                                // All exercises done in this round
+                                                                if (circuitRound < workout[currentExerciseIndex].rounds) {
+                                                                    const restTime = parseTime(workout[currentExerciseIndex].restBetweenRounds);
+                                                                    setTimer(restTime);
+                                                                    setIsResting(true);
+                                                                } else {
+                                                                    // Circuit complete, move to next item
+                                                                    setCircuitExIdx(0);
+                                                                    setCircuitRound(1);
+                                                                    setCircuitDurations([]);
+                                                                    setInCircuit(false);
+                                                                    if (currentExerciseIndex < workout.length - 1) {
+                                                                        setCurrentExerciseIndex(currentExerciseIndex + 1);
+                                                                        setCurrentSetIndex(0);
+                                                                    } else {
+                                                                        finishWorkout();
+                                                                    }
+                                                                }
+                                                            }
+                                                        }}
+                                                        className="bg-green-500 text-white px-6 py-3 rounded text-xl mt-4"
+                                                    >
+                                                        Complete ⏱ {formatTime(setStopwatch)}
+                                                    </button>
                                                 </div>
-                                            ) : null}
-                                            <button 
-                                                onClick={() => {
-                                                    setIsResting(false);
-                                                    setTimer(0);
-                                                    // Advance to next set but DO NOT auto-start
-                                                    if (currentSetIndex < workout[currentExerciseIndex].sets.length - 1) {
-                                                        setCurrentSetIndex(currentSetIndex + 1);
-                                                    } else if (currentExerciseIndex < workout.length - 1) {
-                                                        setCurrentExerciseIndex(currentExerciseIndex + 1);
-                                                        setCurrentSetIndex(0);
-                                                    } else {
-                                                        finishWorkout();
-                                                    }
-                                                }}
-                                                className="bg-green-500 text-white px-8 py-4 rounded text-xl font-bold"
-                                            >
-                                                Next Set →
-                                            </button>
+                                            )}
+                                            {isResting && (
+                                                <div className="mb-4">
+                                                    <h3 className="text-5xl font-bold text-orange-500">Rest Between Rounds: {formatTime(timer)}</h3>
+                                                    <p className="text-lg mt-2">Next: Round {circuitRound + 1}</p>
+                                                    <button 
+                                                        onClick={() => {
+                                                            setIsResting(false);
+                                                            setTimer(0);
+                                                            setCircuitRound(circuitRound + 1);
+                                                            setCircuitExIdx(0);
+                                                        }}
+                                                        className="bg-green-500 text-white px-6 py-3 rounded text-xl mt-4"
+                                                    >
+                                                        Next Round →
+                                                    </button>
+                                                </div>
+                                            )}
                                         </div>
                                     ) : (
-                                        <div className="mb-4">
-                                            <p className="text-lg text-gray-500 mb-4">Ready to begin this set?</p>
-                                            <button 
-                                                onClick={() => {
-                                                    setIsDoingSet(true);
-                                                    setSetStopwatch(0);
-                                                }}
-                                                className="bg-blue-500 text-white px-8 py-4 rounded text-xl font-bold"
-                                            >
-                                                Start Set
-                                            </button>
-                                            <p className="text-xs text-gray-400 mt-2">Timer counts up during your set</p>
+                                        /* ===== REGULAR EXERCISE EXECUTION ===== */
+                                        <div>
+                                            <h3 className="text-4xl font-bold mb-4">{workout[currentExerciseIndex].name}</h3>
+                                            <h4 className="text-2xl font-bold mb-2">Set {currentSetIndex + 1} of {workout[currentExerciseIndex].sets.length}</h4>
+                                            <p className="text-3xl mb-2">Reps: {workout[currentExerciseIndex].sets[currentSetIndex].reps}</p>
+                                            <p className="text-3xl mb-2">Weight: {workout[currentExerciseIndex].sets[currentSetIndex].weight}</p>
+                                            <p className="text-3xl mb-2">Rest: {workout[currentExerciseIndex].sets[currentSetIndex].rest}</p>
+                                            {isDoingSet ? (
+                                                <div className="mb-4">
+                                                    <h3 className="text-5xl font-bold text-blue-600">Set Time: {formatTime(setStopwatch)}</h3>
+                                                    <button 
+                                                        onClick={() => {
+                                                            const setDuration = setStopwatch;
+                                                            setIsDoingSet(false);
+                                                            setSetStopwatch(0);
+                                                            const newWorkout = [...workout];
+                                                            const currentSet = { ...newWorkout[currentExerciseIndex].sets[currentSetIndex], duration: formatTime(setDuration) };
+                                                            newWorkout[currentExerciseIndex].sets[currentSetIndex] = currentSet;
+                                                            setWorkout(newWorkout);
+                                                            const restTimeInSeconds = parseTime(currentSet.rest);
+                                                            setTimer(restTimeInSeconds);
+                                                            setIsResting(true);
+                                                        }}
+                                                        className="bg-green-500 text-white px-6 py-3 rounded text-xl mt-4"
+                                                    >
+                                                        Complete Set ⏱ {formatTime(setStopwatch)}
+                                                    </button>
+                                                </div>
+                                            ) : isResting ? (
+                                                <div className="mb-4">
+                                                    <h3 className="text-5xl font-bold text-orange-500">Rest: {formatTime(timer)}</h3>
+                                                    <p className="text-lg mt-2 text-gray-500">Last set took {workout[currentExerciseIndex].sets[currentSetIndex].duration || '—'}</p>
+                                                    {(currentSetIndex + 1 < workout[currentExerciseIndex].sets.length) ? (
+                                                        <div className="mt-4 p-4 bg-gray-100 rounded">
+                                                            <h4 className="text-xl font-bold">Next Set:</h4>
+                                                            <p>Reps: {workout[currentExerciseIndex].sets[currentSetIndex + 1].reps}</p>
+                                                            <p>Weight: {workout[currentExerciseIndex].sets[currentSetIndex + 1].weight}</p>
+                                                        </div>
+                                                    ) : (currentExerciseIndex + 1 < workout.length) ? (
+                                                        <div className="mt-4 p-4 bg-gray-100 rounded">
+                                                            <h4 className="text-xl font-bold">Next Exercise:</h4>
+                                                            <p>{workout[currentExerciseIndex + 1].name}</p>
+                                                            {workout[currentExerciseIndex + 1].type !== 'circuit' && (
+                                                                <><p>Reps: {workout[currentExerciseIndex + 1].sets[0]?.reps}</p>
+                                                                <p>Weight: {workout[currentExerciseIndex + 1].sets[0]?.weight}</p></>
+                                                            )}
+                                                        </div>
+                                                    ) : null}
+                                                    <button 
+                                                        onClick={() => {
+                                                            setIsResting(false);
+                                                            setTimer(0);
+                                                            if (currentSetIndex < workout[currentExerciseIndex].sets.length - 1) {
+                                                                setCurrentSetIndex(currentSetIndex + 1);
+                                                            } else if (currentExerciseIndex < workout.length - 1) {
+                                                                setCurrentExerciseIndex(currentExerciseIndex + 1);
+                                                                setCurrentSetIndex(0);
+                                                            } else {
+                                                                finishWorkout();
+                                                            }
+                                                        }}
+                                                        className="bg-green-500 text-white px-8 py-4 rounded text-xl font-bold"
+                                                    >
+                                                        Next Set →
+                                                    </button>
+                                                </div>
+                                            ) : (
+                                                <div className="mb-4">
+                                                    <p className="text-lg text-gray-500 mb-4">Ready to begin this set?</p>
+                                                    <button 
+                                                        onClick={() => { setIsDoingSet(true); setSetStopwatch(0); }}
+                                                        className="bg-blue-500 text-white px-8 py-4 rounded text-xl font-bold"
+                                                    >
+                                                        Start Set
+                                                    </button>
+                                                    <p className="text-xs text-gray-400 mt-2">Timer counts up during your set</p>
+                                                </div>
+                                            )}
                                         </div>
                                     )}
                                 </div>
@@ -1462,11 +1705,37 @@ ${exList}`;
                                     {entry.workout ? (
                                         entry.workout.map((exercise, exerciseIndex) => (
                                             <div key={exerciseIndex} className="mb-4">
-                                                <h3 className="font-bold">{exercise.name} - Total Sets: {exercise.sets.length}</h3>
-                                                <p>Reps: {exercise.sets.map(set => set.reps).join(', ')}</p>
-                                                <p>Weight: {exercise.sets.map(set => set.weight).join(', ')}</p>
-                                                <p>Rest: {exercise.sets.map(set => set.rest).join(', ')}</p>
-                                                {exercise.sets[0].duration && <p>Duration per set: {exercise.sets.map(set => set.duration || '-').join(', ')}</p>}
+                                                {exercise.sets ? (
+                                                    <>
+                                                        <h3 className="font-bold">{exercise.name} - Total Sets: {exercise.sets.length}</h3>
+                                                        <p>Reps: {exercise.sets.map(set => set.reps).join(', ')}</p>
+                                                        <p>Weight: {exercise.sets.map(set => set.weight).join(', ')}</p>
+                                                        <p>Rest: {exercise.sets.map(set => set.rest).join(', ')}</p>
+                                                        {exercise.sets[0]?.duration && <p>Duration per set: {exercise.sets.map(set => set.duration || '-').join(', ')}</p>}
+                                                    </>
+                                                ) : (
+                                                    <div>
+                                                        <h3 className="font-bold text-purple-700">🔄 {exercise.name} — {exercise.rounds} rounds (rest {exercise.restBetweenRounds})</h3>
+                                                        {exercise.completedRounds && exercise.completedRounds.map((round, ri) => (
+                                                            <div key={ri} className="ml-4 mt-2 border-l-2 border-purple-300 pl-3">
+                                                                <p className="font-semibold text-sm text-gray-500">Round {ri + 1}</p>
+                                                                {round.exercises && round.exercises.map((ex, ei) => (
+                                                                    <p key={ei} className="text-sm">
+                                                                        {ex.name}: {ex.reps} reps @ {ex.weight} lbs
+                                                                        {ex.duration ? ` (${ex.duration})` : ''}
+                                                                    </p>
+                                                                ))}
+                                                            </div>
+                                                        ))}
+                                                        {!exercise.completedRounds && (
+                                                            <div className="ml-4 mt-2">
+                                                                {exercise.exercises && exercise.exercises.map((ex, ei) => (
+                                                                    <p key={ei} className="text-sm">{ex.name}: {ex.reps} reps @ {ex.weight} lbs</p>
+                                                                ))}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                )}
                                             </div>
                                         ))
                                     ) : entry.liveWorkout && (
