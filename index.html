@@ -571,12 +571,14 @@
         }
         .stat-row:last-child { border-bottom: none; }
         .stat-key {
-            font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.06em;
-            color: var(--silver-dim); text-transform: uppercase; white-space: nowrap; flex-shrink: 0;
+            font-family: var(--font-mono); font-size: 11px; font-weight: 600; letter-spacing: 0.05em;
+            color: var(--silver-edge); text-transform: uppercase; white-space: nowrap; flex-shrink: 0;
+            text-shadow: 0 0 4px var(--cyan-glow);
         }
         .stat-val {
-            font-family: var(--font-display); font-size: 13px; font-weight: 600;
-            letter-spacing: 0.04em; text-align: right; white-space: nowrap;
+            font-family: var(--font-display); font-size: 14px; font-weight: 700;
+            letter-spacing: 0.03em; text-align: right; white-space: nowrap;
+            color: #fff; text-shadow: 0 0 6px var(--cyan-glow);
         }
 
         .stat-value-cyber {
@@ -1662,25 +1664,24 @@ ${exList}`;
                 const filtered = filterByPeriod(history, analyticsView);
                 const totalVol = filtered.reduce((t, e) => t + (e.volume || 0), 0);
                 
-                // Time under tension per exercise
                 const tutByEx = {};
+                const tutByMuscle = {};
                 let totalTUT = 0, totalSets = 0, totalRestSec = 0, totalRests = 0, skippedRests = 0;
                 let totalWorkoutTimeMin = 0;
-                const volumeByWeek = {};
                 const exVolume = {};
                 const exFrequency = {};
                 const muscleVolume = {};
-                const muscleFreq = {};
+                const muscleSessions = {};
+                const muscleSets = {};
                 const best1RM = {};
+                const sessionMuscles = new Set();
                 
                 filtered.forEach(entry => {
                     if (entry.startTime && entry.date) {
                         const dur = (new Date(entry.date) - new Date(entry.startTime)) / 60000;
                         if (dur > 0 && dur < 480) totalWorkoutTimeMin += dur;
                     }
-                    const weekKey = entry.date ? new Date(entry.date).toLocaleDateString('en-US', {year:'2-digit', month:'short', day:'numeric'}) : '';
-                    if (!volumeByWeek[weekKey]) volumeByWeek[weekKey] = 0;
-                    volumeByWeek[weekKey] += entry.volume || 0;
+                    sessionMuscles.clear();
                     
                     if (entry.workout) {
                         entry.workout.forEach(exercise => {
@@ -1691,22 +1692,30 @@ ${exList}`;
                                         const v = (parseInt(ex.reps)||0) * (parseInt(ex.weight)||0);
                                         exVolume[ex.name] = (exVolume[ex.name]||0) + v;
                                         exFrequency[ex.name] = (exFrequency[ex.name]||0) + 1;
+                                        const m = computeMuscleGroups(ex.name).split(',');
+                                        m.forEach(mu => { const mt = mu.trim(); muscleVolume[mt] = (muscleVolume[mt]||0) + v; muscleSets[mt] = (muscleSets[mt]||0) + 1; if (!sessionMuscles.has(mt)) { sessionMuscles.add(mt); muscleSessions[mt] = (muscleSessions[mt]||0) + 1; } });
                                     });
                                 }
                                 return;
                             }
                             exFrequency[exName] = (exFrequency[exName]||0) + 1;
+                            const muscles = computeMuscleGroups(exName).split(',');
+                            muscles.forEach(m => { const mt = m.trim(); if (!sessionMuscles.has(mt)) { sessionMuscles.add(mt); muscleSessions[mt] = (muscleSessions[mt]||0) + 1; } });
                             if (exercise.sets) exercise.sets.forEach(set => {
                                 totalSets++;
-                                exVolume[exName] = (exVolume[exName]||0) + ((parseInt(set.reps)||0)*(parseInt(set.weight)||0));
+                                const sv = (parseInt(set.reps)||0)*(parseInt(set.weight)||0);
+                                exVolume[exName] = (exVolume[exName]||0) + sv;
                                 if (set.duration) { const s = parseTimeToSeconds(set.duration); totalTUT += s; tutByEx[exName] = (tutByEx[exName]||0) + s; }
                                 const rm = estimate1RM(parseInt(set.weight)||0, parseInt(set.reps)||0);
                                 if (!best1RM[exName] || rm > best1RM[exName]) best1RM[exName] = rm;
                             });
-                            const muscles = computeMuscleGroups(exName).split(',');
+                            const totalExVol = exercise.sets ? exercise.sets.reduce((s,set)=>s+((parseInt(set.reps)||0)*(parseInt(set.weight)||0)),0) : 0;
+                            const totalExDur = exercise.sets ? exercise.sets.reduce((s,set)=>s+(set.duration ? parseTimeToSeconds(set.duration) : 0),0) : 0;
                             muscles.forEach(m => {
-                                muscleFreq[m.trim()] = (muscleFreq[m.trim()]||0) + (exercise.sets ? exercise.sets.length : 1);
-                                if (exercise.sets) muscleVolume[m.trim()] = (muscleVolume[m.trim()]||0) + exercise.sets.reduce((s,set)=>s+((parseInt(set.reps)||0)*(parseInt(set.weight)||0)),0);
+                                const mt = m.trim();
+                                muscleVolume[mt] = (muscleVolume[mt]||0) + totalExVol;
+                                muscleSets[mt] = (muscleSets[mt]||0) + (exercise.sets ? exercise.sets.length : 1);
+                                tutByMuscle[mt] = (tutByMuscle[mt]||0) + totalExDur;
                             });
                         });
                         if (entry.actualRestTimes) {
@@ -1723,12 +1732,12 @@ ${exList}`;
                     totalVolume: totalVol,
                     personalBests: calculatePersonalBests(),
                     frequentExercises: getMostFrequentExercises(),
-                    totalTUT, totalSets, totalWorkoutTimeMin,
+                    totalTUT, tutByEx, tutByMuscle, totalSets, totalWorkoutTimeMin,
                     avgSetDur: totalSets > 0 ? totalTUT / totalSets : 0,
                     avgWorkoutDur: filtered.length > 0 ? totalWorkoutTimeMin / filtered.length : 0,
                     sessionDensity: totalWorkoutTimeMin > 0 ? totalVol / totalWorkoutTimeMin : 0,
                     totalRestSec, totalRests, skippedRests,
-                    exVolume, exFrequency, muscleVolume, muscleFreq, best1RM, volumeByWeek,
+                    exVolume, exFrequency, muscleVolume, muscleSets, muscleSessions, best1RM,
                     completionRate: history.length > 0 ? Math.round((filtered.filter(e=>e.completed!==false).length / Math.max(1,filtered.length)) * 100) : 0
                 });
             };
@@ -2329,41 +2338,47 @@ ${exList}`;
                                     <div className="cyber-panel" style={{padding:'16px'}}>
                                         <h3 className="heading-md mb-3" style={{color:'var(--cyan-neon)'}}>EXERCISE VOLUME</h3>
                                         {Object.entries(statistics.exVolume||{}).sort(([,a],[,b])=>b-a).slice(0,6).map(([ex,v])=>(
-                                            <div key={ex} className="stat-row"><span className="stat-key">{ex}</span><span className="stat-val" style={{fontSize:'10px'}}>{v.toLocaleString()} LBS</span></div>
+                                            <div key={ex} className="stat-row"><span className="stat-key">{ex}</span><span className="stat-val">{v.toLocaleString()} LBS</span></div>
                                         ))}
                                     </div>
                                     {/* Best 1RM */}
                                     <div className="cyber-panel" style={{padding:'16px'}}>
                                         <h3 className="heading-md mb-3" style={{color:'var(--cyan-neon)'}}>EST 1RM</h3>
                                         {Object.entries(statistics.best1RM||{}).sort(([,a],[,b])=>b-a).slice(0,6).map(([ex,v])=>(
-                                            <div key={ex} className="stat-row"><span className="stat-key">{ex}</span><span className="stat-val" style={{fontSize:'10px'}}>{v.toLocaleString()} LBS</span></div>
+                                            <div key={ex} className="stat-row"><span className="stat-key">{ex}</span><span className="stat-val">{v.toLocaleString()} LBS</span></div>
                                         ))}
                                     </div>
                                     {/* Muscle Breakdown */}
                                     <div className="cyber-panel" style={{padding:'16px'}}>
                                         <h3 className="heading-md mb-3" style={{color:'var(--cyan-neon)'}}>MUSCLE VOLUME</h3>
                                         {Object.entries(statistics.muscleVolume||{}).sort(([,a],[,b])=>b-a).slice(0,8).map(([m,v])=>(
-                                            <div key={m} className="stat-row"><span className="stat-key">{m}</span><span className="stat-val" style={{fontSize:'10px'}}>{v.toLocaleString()} LBS</span></div>
+                                            <div key={m} className="stat-row"><span className="stat-key">{m}</span><span className="stat-val">{v.toLocaleString()} LBS</span></div>
                                         ))}
                                     </div>
                                     <div className="cyber-panel" style={{padding:'16px'}}>
-                                        <h3 className="heading-md mb-3" style={{color:'var(--cyan-neon)'}}>MUSCLE FREQ</h3>
-                                        {Object.entries(statistics.muscleFreq||{}).sort(([,a],[,b])=>b-a).slice(0,8).map(([m,v])=>(
-                                            <div key={m} className="stat-row"><span className="stat-key">{m}</span><span className="stat-val" style={{fontSize:'10px'}}>{v} SETS</span></div>
+                                        <h3 className="heading-md mb-3" style={{color:'var(--cyan-neon)'}}>MUSCLE SESSIONS</h3>
+                                        {Object.entries(statistics.muscleSessions||{}).sort(([,a],[,b])=>b-a).slice(0,8).map(([m,v])=>(
+                                            <div key={m} className="stat-row"><span className="stat-key">{m}</span><span className="stat-val">{v}×</span></div>
+                                        ))}
+                                    </div>
+                                    <div className="cyber-panel" style={{padding:'16px'}}>
+                                        <h3 className="heading-md mb-3" style={{color:'var(--cyan-neon)'}}>MUSCLE SETS</h3>
+                                        {Object.entries(statistics.muscleSets||{}).sort(([,a],[,b])=>b-a).slice(0,8).map(([m,v])=>(
+                                            <div key={m} className="stat-row"><span className="stat-key">{m}</span><span className="stat-val">{v} SETS</span></div>
                                         ))}
                                     </div>
                                     {/* PBs */}
                                     <div className="cyber-panel" style={{padding:'16px'}}>
                                         <h3 className="heading-md mb-3" style={{color:'var(--cyan-neon)'}}>PERSONAL BESTS</h3>
                                         {Object.entries(statistics.personalBests||{}).slice(0,8).map(([ex, wt]) => (
-                                            <div key={ex} className="stat-row"><span className="stat-key">{ex}</span><span className="stat-val" style={{fontSize:'10px'}}>{wt} LBS</span></div>
+                                            <div key={ex} className="stat-row"><span className="stat-key">{ex}</span><span className="stat-val">{wt} LBS</span></div>
                                         ))}
                                     </div>
                                     {/* Most Frequent */}
                                     <div className="cyber-panel" style={{padding:'16px'}}>
                                         <h3 className="heading-md mb-3" style={{color:'var(--cyan-neon)'}}>MOST FREQUENT</h3>
                                         {Object.entries(statistics.frequentExercises||{}).sort(([,a],[,b])=>b-a).slice(0,10).map(([ex,ct])=>(
-                                            <div key={ex} className="stat-row"><span className="stat-key">{ex}</span><span className="stat-val" style={{fontSize:'10px'}}>{ct}×</span></div>
+                                            <div key={ex} className="stat-row"><span className="stat-key">{ex}</span><span className="stat-val">{ct}×</span></div>
                                         ))}
                                     </div>
                                 </div>
