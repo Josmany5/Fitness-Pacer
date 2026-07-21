@@ -565,6 +565,20 @@
             50% { opacity: 0.4; }
         }
 
+        .stat-row {
+            display: flex; justify-content: space-between; align-items: center; gap: 10px;
+            padding: 7px 0; border-bottom: 1px solid rgba(200,214,229,0.05);
+        }
+        .stat-row:last-child { border-bottom: none; }
+        .stat-key {
+            font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.06em;
+            color: var(--silver-dim); text-transform: uppercase; white-space: nowrap; flex-shrink: 0;
+        }
+        .stat-val {
+            font-family: var(--font-display); font-size: 13px; font-weight: 600;
+            letter-spacing: 0.04em; text-align: right; white-space: nowrap;
+        }
+
         .stat-value-cyber {
             font-family: var(--font-display); font-size: 1.8rem; font-weight: 700;
             color: #fff; letter-spacing: 0.03em;
