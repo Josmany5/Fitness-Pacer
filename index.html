@@ -1747,13 +1747,6 @@ ${exList}`;
                                 <div style={{fontSize:'40px',marginBottom:'12px',marginTop:'10px'}}>⚡</div>
                                 <h1 className="heading-xl mb-2">FITNESS PACER</h1>
                                 <p className="text-muted mb-8">TRACK WITH PRECISION</p>
-                                <button 
-                                    onClick={() => { localStorage.clear(); window.location.reload(); }}
-                                    className="btn-cyber-danger"
-                                    style={{fontSize:'11px',padding:'8px 16px',marginBottom:'12px',width:'100%'}}
-                                >
-                                    🔧 RESET APP DATA
-                                </button>
                                 <div className="flex flex-col space-y-3 max-w-xs mx-auto">
                                     <button onClick={() => { setPage('createWorkout'); resetCreateWorkoutPage(); }} className="btn-cyber-accent">CREATE WORKOUT</button>
                                     <button onClick={() => setPage('liveWorkout')} className="btn-cyber">LIVE WORKOUT</button>
@@ -1762,6 +1755,13 @@ ${exList}`;
                                     <button onClick={() => setPage('progress')} className="btn-cyber">VIEW PROGRESS</button>
                                     <button onClick={() => setPage('statistics')} className="btn-cyber">STATISTICS</button>
                                 </div>
+                                <button 
+                                    onClick={() => { localStorage.clear(); window.location.reload(); }}
+                                    className="btn-cyber-danger"
+                                    style={{fontSize:'11px',padding:'8px 16px',marginTop:'16px',width:'200px'}}
+                                >
+                                    🔧 RESET APP DATA
+                                </button>
                             </div>
                         )}
 
