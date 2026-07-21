@@ -774,6 +774,7 @@
         };
 
         // Timer Hook
+        // Timer Hook - clears on page change
         const useTimer = (page, isResting, timer, setTimer) => {
             useEffect(() => {
                 let interval;
@@ -786,11 +787,14 @@
                         setTimer(prevTime => prevTime + 1);
                     }, 1000);
                 }
-                return () => clearInterval(interval);
+                // Clear on unmount OR when page changes
+                return () => {
+                    if (interval) clearInterval(interval);
+                };
             }, [page, isResting, timer]);
         };
         
-        // Set stopwatch hook (counts up during set)
+        // Set stopwatch hook (counts up during set) - clears on page change
         const useSetStopwatch = (page, isDoingSet, setStopwatch, setSetStopwatch) => {
             useEffect(() => {
                 let interval;
@@ -848,7 +852,30 @@
 
             const buildSystemPrompt = () => {
                 const exList = exercisesList.map(e => `- ${e}`).join('\n');
-                return `You are a workout programming AI in the Fitness Pacer app. You know all strength, running/cardio, sport, yoga, flexibility/mobility, calisthenics, and hypertrophy training methodologies.
+                return `You are a workout programming AI in the Fitness Pacer app. You know all strength, running/cardio, sport, yoga, flexibility/mobility, calisthenics, and hypertrophy training methodologies. You can create regular exercises AND circuits.
+
+## FITNESS PACER APP PAGES
+- Home: main menu with Create Workout, Live Workout, Saved Workouts, View History, View Progress, Statistics
+- Create Workout: build a workout from exercises list, custom exercises, or circuits
+- Workout Active: runs through sets, shows timers for sets and rest
+- Live Workout: freestyle track-as-you-go mode
+- Saved Workouts: library of previously created/saved workouts
+- History: log of completed workouts with full detail
+- Progress: charts tracking weight progression over time
+- Statistics: volume, personal bests, frequent exercises
+
+## JSON FORMATS
+
+### Regular exercise workout:
+WORKOUT_JSON: { "workoutName": "Push Day", "exercises": [ { "name": "Bench Press", "sets": [ { "reps": 10, "weight": 185, "rest": "1:30" }, { "reps": 8, "weight": 205, "rest": "2:00" } ] }, { "name": "Shoulder Press", "sets": [ { "reps": 12, "weight": 95, "rest": "1:30" } ] } ] }
+
+### Circuit workout (mix of circuit and regular):
+WORKOUT_JSON: { "workoutName": "Full Body Circuit", "exercises": [ { "type": "circuit", "name": "Power Circuit", "rounds": 3, "restBetweenRounds": "1:00", "exercises": [ { "name": "Squat", "reps": 15, "weight": 135 }, { "name": "Pushups", "reps": 20, "weight": 0 } ] }, { "name": "Deadlift", "sets": [ { "reps": 5, "weight": 225, "rest": "3:00" } ] } ] }
+
+### Circuit-only workout:
+WORKOUT_JSON: { "workoutName": "HIIT Circuit", "exercises": [ { "type": "circuit", "name": "Burner", "rounds": 4, "restBetweenRounds": "0:45", "exercises": [ { "name": "Burpees", "reps": 15, "weight": 0 }, { "name": "Kettlebell Swing", "reps": 20, "weight": 35 } ] } ] }
+
+Always use "type": "circuit" for circuits with "rounds" and "restBetweenRounds" (mm:ss). Circuit exercises use flat "reps"/"weight" (no nested sets array). You can mix circuit and regular exercises in the same workout.
 
 ## ABOUT THE USER
 
@@ -1313,6 +1340,7 @@ ${exList}`;
                 setWorkoutCompleted(true);
                 setActualRestTimes({});
                 setOriginalWorkout(null);
+                setTimer(0); setIsResting(false); setIsDoingSet(false); setSetStopwatch(0);
                 updateStatistics();
             };
 
@@ -1363,7 +1391,7 @@ ${exList}`;
                 localStorage.setItem('history', JSON.stringify(newHistory));
                 setLiveWorkout([]); setWorkoutNotes('');
                 setCurrentSet({ reps: 0, weight: 0, exertion: 0 });
-                setCurrentExercise(''); setTimer(0); setIsResting(false);
+                setCurrentExercise(''); setTimer(0); setIsResting(false); setIsDoingSet(false); setSetStopwatch(0);
                 setPage('home');
             };
 
@@ -1850,17 +1878,6 @@ ${exList}`;
                                                             }} style={{background:'transparent',border:'none',outline:'none',fontFamily:'var(--font-display)',fontSize:'1.2rem',fontWeight:700,color:'#fff',width:'60px',textAlign:'center',textShadow:'0 0 12px var(--cyan-glow)'}} />
                                                         </div>
                                                     </div>
-                                                </div>
-                                                <div className="mb-6" style={{display:'flex',alignItems:'center',justifyContent:'center',gap:'8px'}}>
-                                                    <span style={{color:'var(--crimson-neon)',fontSize:'14px',fontFamily:'var(--font-mono)',textShadow:'0 0 6px var(--crimson-glow)'}}>REST:</span>
-                                                    <input type="text" value={workout[currentExerciseIndex].sets[currentSetIndex].rest} onChange={(e) => {
-                                                        let value = e.target.value.replace(/[^0-9]/g, '');
-                                                        if (value) {
-                                                            if (value.length <= 2) value = `0:${value.padStart(2, '0')}`;
-                                                            else { const mins = parseInt(value.slice(0, -2)); const secs = value.slice(-2); value = `${mins}:${secs}`; }
-                                                        }
-                                                        handleSetChange(currentExerciseIndex, currentSetIndex, 'rest', value);
-                                                    }} style={{background:'transparent',border:'none',borderBottom:'1px solid var(--crimson-neon)',outline:'none',fontFamily:'var(--font-display)',fontSize:'1.1rem',fontWeight:700,color:'var(--crimson-neon)',width:'60px',textAlign:'center',textShadow:'0 0 8px var(--crimson-glow)'}} />
                                                 </div>
                                                 {isDoingSet ? (
                                                     <div>
