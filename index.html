@@ -592,6 +592,27 @@
             text-transform: uppercase;
         }
 
+        .muscle-btn {
+            display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+            background: rgba(0, 150, 255, 0.04); border: 1px solid rgba(0, 245, 255, 0.2);
+            clip-path: polygon(4px 0, calc(100% - 4px) 0, 100% 4px, 100% calc(100% - 4px), calc(100% - 4px) 100%, 4px 100%, 0 calc(100% - 4px), 0 4px);
+            padding: 14px 12px; cursor: pointer; transition: all 0.2s ease;
+            font-family: var(--font-mono); font-size: 13px; font-weight: 600; color: var(--silver-edge);
+            letter-spacing: 0.04em; text-transform: uppercase;
+        }
+        .muscle-btn:hover {
+            background: rgba(0, 245, 255, 0.12); border-color: var(--cyan-neon); color: var(--cyan-neon);
+            text-shadow: 0 0 8px var(--cyan-glow); box-shadow: 0 0 16px var(--cyan-dim); transform: scale(1.02);
+        }
+        .muscle-btn.active {
+            background: rgba(0, 245, 255, 0.18); border-color: var(--cyan-neon); color: #fff;
+            text-shadow: 0 0 10px var(--cyan-glow); box-shadow: 0 0 20px var(--cyan-glow), 0 0 40px rgba(0,245,255,0.15);
+        }
+        .muscle-section-title {
+            font-family: var(--font-display); font-size: 12px; font-weight: 700; letter-spacing: 0.1em;
+            color: var(--cyan-neon); text-shadow: 0 0 6px var(--cyan-glow); margin-bottom: 8px;
+        }
+
         @media (max-width: 480px) {
             .ai-chat-panel { width: calc(100vw - 24px); right: 12px; bottom: 76px; max-height: 460px; }
             .timer-ring-container { width: 240px; height: 240px; }
@@ -1647,11 +1668,36 @@ ${exList}`;
 
             const computeMuscleGroups = (exerciseName) => {
                 const map = {
-                    'Squat': 'quads,glutes', 'Deadlift': 'back,glutes,hams', 'Pulldown': 'back,biceps',
-                    'Row': 'back,biceps', 'Benchpress': 'chest,triceps', 'Shoulderpress': 'shoulders,triceps',
-                    'Bicep Curls': 'biceps', 'Tricep Extensions': 'triceps', 'Ham Curl': 'hams',
-                    'Glute Thrust': 'glutes', 'Shrugs': 'traps', 'Chest Fly': 'chest', 'Delt Fly': 'shoulders',
-                    'Pushups': 'chest,triceps', 'Burpees': 'full body', 'Kettlebell Swing': 'glutes,hams,back'
+                    'Squat': 'quads', 'Deadlift': 'low_back', 'Pulldown': 'lats', 'Row': 'lats',
+                    'Benchpress': 'chest', 'Shoulderpress': 'front_delts', 'Bicep Curls': 'biceps',
+                    'Tricep Extensions': 'triceps', 'Ham Curl': 'hamstrings', 'Glute Thrust': 'glutes',
+                    'Shrugs': 'traps', 'Chest Fly': 'chest', 'Delt Fly': 'front_delts', 'Pushups': 'chest',
+                    'Burpees': 'quads', 'Kettlebell Swing': 'glutes', 'Pullups': 'lats', 'Dips': 'triceps',
+                    'Leg Press': 'quads', 'Calf Raises': 'calves', 'Leg Curl': 'hamstrings',
+                    'Leg Extension': 'quads', 'Lateral Raises': 'front_delts', 'Front Raises': 'front_delts',
+                    'Rear Delt Fly': 'rear_delts', 'Face Pull': 'rear_delts', 'Hyperextension': 'low_back',
+                    'Good Morning': 'low_back', 'Plank': 'abs', 'Crunches': 'abs', 'Leg Raises': 'abs',
+                    'Overhead Press': 'front_delts', 'Incline Press': 'chest', 'Preacher Curl': 'biceps',
+                    'Hammer Curl': 'biceps', 'Skull Crusher': 'triceps', 'T Bar Row': 'lats',
+                    'Lat Pulldown': 'lats', 'Seated Row': 'lats', 'Barbell Row': 'lats',
+                    'Dumbbell Row': 'lats', 'Rack Pull': 'traps', 'Upright Row': 'traps',
+                    'Hip Thrust': 'glutes', 'Lunge': 'quads', 'Running': 'calves', 'Sprinting': 'hamstrings',
+                    'Cycling': 'quads', 'Swimming': 'lats', 'Battle Ropes': 'traps', 'Sled Push': 'quads',
+                    'Sled Pull': 'hamstrings', 'Tire Flip': 'glutes', 'Snatch': 'glutes', 'Clean': 'glutes',
+                    'Jerk': 'front_delts', 'Clean and Jerk': 'glutes', 'Power Clean': 'glutes',
+                    'Push Press': 'front_delts', 'Muscle Up': 'lats', 'Ring Row': 'lats',
+                    'Ring Dip': 'triceps', 'Pistol Squat': 'quads', 'Nordic Curl': 'hamstrings',
+                    'Reverse Hyper': 'low_back', 'Back Extension': 'low_back', 'Ab Wheel': 'abs',
+                    'Hanging Leg Raise': 'abs', 'Toes to Bar': 'abs', 'Side Plank': 'abs',
+                    'Romanian Deadlift': 'hamstrings', 'Sumo Deadlift': 'glutes', 'Front Squat': 'quads',
+                    'Goblet Squat': 'quads', 'Wall Sit': 'quads', 'Seated Calf Raise': 'calves',
+                    'Standing Calf Raise': 'calves', 'Overhead Extension': 'triceps',
+                    'Cable Pushdown': 'triceps', 'Diamond Pushup': 'triceps', 'Bench Dip': 'triceps',
+                    'Flat Press': 'chest', 'Dumbbell Press': 'chest', 'Cable Crossover': 'chest',
+                    'Landmine Press': 'front_delts', 'Cuban Press': 'rear_delts', 'Y Raise': 'rear_delts',
+                    'Bent Over Raise': 'rear_delts', 'Meadows Row': 'lats', 'Pendlay Row': 'lats',
+                    'Inverted Row': 'lats', 'Straight Arm Pulldown': 'lats', 'Pullover': 'lats',
+                    'Dumbbell Shrug': 'traps', 'Barbell Shrug': 'traps', 'Farmer Carry': 'traps'
                 };
                 return map[exerciseName] || exerciseName.split(' ')[0].toLowerCase();
             };
@@ -2383,29 +2429,16 @@ ${exList}`;
                                 )}
                                 {statView === 'body' && (
                                     <div style={{textAlign:'center'}}>
-                                        <svg viewBox="0 0 140 340" style={{width:'140px',height:'340px',margin:'0 auto',display:'block'}}>
-                                            <ellipse cx="70" cy="40" rx="18" ry="22" fill="none" stroke="rgba(200,214,229,0.3)" strokeWidth="0.8"/>
-                                            <rect x="44" y="64" width="52" height="80" rx="6" fill="none" stroke="rgba(200,214,229,0.3)" strokeWidth="0.8"/>
-                                            <line x1="70" y1="85" x2="70" y2="144" stroke="rgba(200,214,229,0.15)" strokeWidth="0.5"/>
-                                            <path d="M44 72 L20 72 L14 120 M96 72 L120 72 L126 120" fill="none" stroke="rgba(200,214,229,0.3)" strokeWidth="0.8"/>
-                                            <path d="M18 120 L14 170 L6 190 M122 120 L126 170 L134 190" fill="none" stroke="rgba(200,214,229,0.3)" strokeWidth="0.8"/>
-                                            <path d="M56 144 L52 210 L44 290 M84 144 L88 210 L96 290" fill="none" stroke="rgba(200,214,229,0.3)" strokeWidth="0.8"/>
-                                            {['chest','shoulders','back','biceps','triceps','quads','glutes','hams','traps'].map(m=>{
-                                                const coords={chest:{x:55,y:64,w:30,h:35},shoulders:{x:44,y:66,w:52,h:12},back:{x:55,y:95,w:30,h:30},biceps:{x:16,y:120,w:22,h:16},triceps:{x:100,y:120,w:22,h:16},quads:{x:52,y:148,w:16,h:60},glutes:{x:56,y:136,w:28,h:18},hams:{x:84,y:148,w:16,h:60},traps:{x:52,y:64,w:36,h:8}};
-                                                const c=coords[m]; const glow=selectedMuscle===m?'rgba(0,245,255,0.5)':'rgba(0,245,255,0.1)';
-                                                return c?<rect key={m} x={c.x} y={c.y} width={c.w} height={c.h} rx="3" fill={glow} stroke={selectedMuscle===m?'#00F5FF':'rgba(200,214,229,0.2)'} strokeWidth="0.8" style={{cursor:'pointer'}} onClick={()=>setSelectedMuscle(selectedMuscle===m?null:m)}/>:null;
-                                            })}
-                                            <text x="70" y="84" textAnchor="middle" fill="rgba(200,214,229,0.4)" fontSize="6">CHEST</text>
-                                            <text x="12" y="132" textAnchor="middle" fill="rgba(200,214,229,0.4)" fontSize="5">BIC</text>
-                                            <text x="128" y="132" textAnchor="middle" fill="rgba(200,214,229,0.4)" fontSize="5">TRI</text>
-                                            <text x="60" y="200" textAnchor="middle" fill="rgba(200,214,229,0.4)" fontSize="5">QUADS</text>
-                                            <text x="88" y="200" textAnchor="middle" fill="rgba(200,214,229,0.4)" fontSize="5">HAMS</text>
-                                            <text x="70" y="60" textAnchor="middle" fill="rgba(200,214,229,0.4)" fontSize="5">TRAPS</text>
-                                        </svg>
-                                        <div style={{marginTop:'6px',display:'flex',flexWrap:'wrap',gap:'4px',justifyContent:'center'}}>
-                                            {['chest','shoulders','back','biceps','triceps','quads','glutes','hams','traps'].map(m=>(
-                                                <button key={m} onClick={()=>setSelectedMuscle(selectedMuscle===m?null:m)} className={selectedMuscle===m?'btn-cyber-accent':'btn-cyber-sm'} style={{fontSize:'8px',padding:'4px 8px'}}>{m.toUpperCase()}</button>
-                                            ))}
+                                        <div className="cyber-panel" style={{padding:'16px',marginBottom:'8px'}}>
+                                            <div style={{fontFamily:'var(--font-display)',fontSize:'12px',fontWeight:700,letterSpacing:'0.1em',color:'var(--cyan-neon)',textShadow:'0 0 8px var(--cyan-glow)',marginBottom:'12px'}}>MUSCLE TARGET MAP</div>
+                                            <div className="muscle-section-title">ANTERIOR</div>
+                                            <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill, minmax(130px, 1fr))',gap:'6px',marginBottom:'14px'}}>
+                                                {[{id:'chest',l:'PEC MAJOR'},{id:'front_delts',l:'FRONT DELTS'},{id:'biceps',l:'BICEPS'},{id:'abs',l:'ABDOMINALS'},{id:'quads',l:'QUADS'},{id:'calves',l:'CALVES'}].map(m => (<button key={m.id} onClick={() => setSelectedMuscle(selectedMuscle === m.id ? null : m.id)} className={'muscle-btn' + (selectedMuscle === m.id ? ' active' : '')}><span style={{fontSize:'16px',color:selectedMuscle===m.id?'#00F5FF':'rgba(0,245,255,0.3)'}}>◆</span>{m.l}</button>))}
+                                            </div>
+                                            <div className="muscle-section-title">POSTERIOR</div>
+                                            <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill, minmax(130px, 1fr))',gap:'6px'}}>
+                                                {[{id:'traps',l:'TRAPS'},{id:'rear_delts',l:'REAR DELTS'},{id:'triceps',l:'TRICEPS'},{id:'lats',l:'LATS'},{id:'low_back',l:'LOW BACK'},{id:'glutes',l:'GLUTES'},{id:'hamstrings',l:'HAMSTRINGS'},{id:'calves',l:'CALVES'}].map(m => (<button key={m.id} onClick={() => setSelectedMuscle(selectedMuscle === m.id ? null : m.id)} className={'muscle-btn' + (selectedMuscle === m.id ? ' active' : '')}><span style={{fontSize:'16px',color:selectedMuscle===m.id?'#00F5FF':'rgba(0,245,255,0.3)'}}>◆</span>{m.l}</button>))}
+                                            </div>
                                         </div>
                                     </div>
                                 )}
